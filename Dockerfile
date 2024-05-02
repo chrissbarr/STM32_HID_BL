@@ -8,8 +8,9 @@ RUN apt-get update && apt-get install -y \
 	build-essential \
 	cmake \
 	ninja-build \
-	curl \ 
-	git
+	curl \
+	git \
+	python3
 
 
 # Get ARM Toolchain

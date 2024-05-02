@@ -27,17 +27,12 @@ set(CPU_PARAMETERS ${CPU_PARAMETERS}
 
 set(SOURCES
 Src/main.cpp
-Src/system_stm32f4xx.c
-Src/stm32f4xx_hal_msp.c
-Src/stm32f4xx_it.c
-Inc/stm32f4xx_it.h
-Inc/stm32f4xx_hal_conf.h
 )
 
 add_executable(${EXECUTABLE} ${SOURCES})
 target_include_directories(${EXECUTABLE} PRIVATE Inc)
 
-set(VARIANT "F407VETX" CACHE STRING "Variant")
+set(VARIANT "F401CEUX" CACHE STRING "Variant")
 set(VARIANT_DIR "${PROJ_PATH}/Variants/${VARIANT}")
 if(EXISTS ${VARIANT_DIR})
     message(STATUS "Configure for variant: ${VARIANT} - ${VARIANT_DIR}")
@@ -56,24 +51,24 @@ else()
     message(FATAL_ERROR "Variant dir not found: ${VARIANT_DIR}")
 endif()
 
-#set(OUTPUT_DIR "${sourceDir}/build/${VARIANT}/${presetName}")
-#message(STATUS ${OUTPUT_DIR})
-#set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${OUTPUT_DIR})
-
 set(compiler_define ${compiler_define}
     "USE_HAL_DRIVER"
     ${stm32_mcu_define}
 )
 
-include(CMake/STM32F4xx_HAL_Driver.cmake)
-#target_link_libraries(${EXECUTABLE} STM32F4xx_HAL_Driver)
+if(${stm32_fam_define} STREQUAL "STM32F4")
+	add_subdirectory("Core/STM32F4")
+	include(CMake/STM32F4xx_HAL_Driver.cmake)
+else()
+	message(FATAL_ERROR "Unsupported STM32 family set: ${stm32_fam_define}")
+endif()
 
 target_compile_definitions(${EXECUTABLE} PRIVATE ${compiler_define})
 
 target_compile_options(${EXECUTABLE} PRIVATE
 	${CPU_PARAMETERS}
 	-Wall
-	-Wpedantic
+#	-Wpedantic
 	-Wno-unused-parameter
 )
 

@@ -265,53 +265,8 @@ Drivers/STM32CubeF4/Drivers/CMSIS/Core/Include/tz_context.h
 )
 
 list(TRANSFORM SOURCES PREPEND "${PROJ_PATH}/")
-
-#add_library(STM32F4xx_HAL_Driver ${SOURCES})
-#target_include_directories(STM32F4xx_HAL_Driver PUBLIC ${PROJ_PATH}/Drivers/STM32CubeF4/Drivers/STM32F4xx_HAL_Driver/Inc)
-
 target_sources(${EXECUTABLE} PRIVATE ${SOURCES})
 target_include_directories(${EXECUTABLE} PUBLIC ${PROJ_PATH}/Drivers/STM32CubeF4/Drivers/CMSIS/Core/Include/)
 target_include_directories(${EXECUTABLE} PUBLIC ${PROJ_PATH}/Drivers/STM32CubeF4/Drivers/CMSIS/Device/ST/STM32F4xx/Include/)
 
-# add startup file matching MCU
-# find Drivers/STM32CubeF4/Drivers/CMSIS/Device/ST/STM32F4xx/Source/Templates/gcc/ -type f -printf "%f\n"
-set(STARTUP_FILES
-startup_stm32f401xc.s
-startup_stm32f401xe.s
-startup_stm32f405xx.s
-startup_stm32f407xx.s
-startup_stm32f410cx.s
-startup_stm32f410rx.s
-startup_stm32f410tx.s
-startup_stm32f411xe.s
-startup_stm32f412cx.s
-startup_stm32f412rx.s
-startup_stm32f412vx.s
-startup_stm32f412zx.s
-startup_stm32f413xx.s
-startup_stm32f415xx.s
-startup_stm32f417xx.s
-startup_stm32f423xx.s
-startup_stm32f427xx.s
-startup_stm32f429xx.s
-startup_stm32f437xx.s
-startup_stm32f439xx.s
-startup_stm32f446xx.s
-startup_stm32f469xx.s
-startup_stm32f479xx.s
-)
-
-foreach(FILE IN LISTS STARTUP_FILES)
-    string(TOLOWER "${stm32_mcu_define}" mcu_lower)
-    if(${FILE} MATCHES "startup_${mcu_lower}.s")
-        set(STARTUP_FILE ${FILE})
-    endif()
-endforeach()
-
-if(STARTUP_FILE)
-    message("Selected startup file: ${STARTUP_FILE}")
-    set(STARTUP_FILE "Drivers/STM32CubeF4/Drivers/CMSIS/Device/ST/STM32F4xx/Source/Templates/gcc/${STARTUP_FILE}")
-    target_sources(${EXECUTABLE} PRIVATE ${STARTUP_FILE})
-else()
-    message(FATAL_ERROR "Could not find matching startup file!")
-endif()
+target_sources(${EXECUTABLE} PRIVATE "Drivers/STM32CubeF4/Drivers/CMSIS/Device/ST/STM32F4xx/Source/Templates/gcc/${stm32_startup_file}")
