@@ -13,7 +13,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS	ON)
 set(PROJ_PATH                       ${CMAKE_CURRENT_SOURCE_DIR})
 set(CMAKE_TOOLCHAIN_FILE            gcc-arm-none-eabi)
 
-project(CMake-Template)
+project(STM32_HIDBL)
 enable_language(C CXX ASM)
 
 set(EXECUTABLE                      ${CMAKE_PROJECT_NAME})
@@ -26,8 +26,11 @@ set(CPU_PARAMETERS ${CPU_PARAMETERS}
 )
 
 set(SOURCES
-Src/main.c
+Src/main.cpp
 Src/system_stm32f4xx.c
+Src/stm32f4xx_hal_msp.c
+Src/stm32f4xx_it.c
+Inc/stm32f4xx_it.h
 Inc/stm32f4xx_hal_conf.h
 )
 
@@ -37,12 +40,25 @@ target_include_directories(${EXECUTABLE} PRIVATE Inc)
 set(VARIANT "F407VETX" CACHE STRING "Variant")
 set(VARIANT_DIR "${PROJ_PATH}/Variants/${VARIANT}")
 if(EXISTS ${VARIANT_DIR})
-    message(STATUS "Configure for variant: ${VARIANT_DIR}")
+    message(STATUS "Configure for variant: ${VARIANT} - ${VARIANT_DIR}")
     include(${VARIANT_DIR}/CMakeLists.txt)
+
+	set(SOURCES
+	variant.h
+	variant.cpp
+	)
+	list(TRANSFORM SOURCES PREPEND ${VARIANT_DIR}/)
+	target_sources(${EXECUTABLE} PRIVATE ${SOURCES})
+	target_include_directories(${EXECUTABLE} PRIVATE ${VARIANT_DIR})
+	target_sources(${EXECUTABLE} PRIVATE ${SOURCES})
     set(linker_script_SRC ${VARIANT_DIR}/ldscript.ld)
 else()
     message(FATAL_ERROR "Variant dir not found: ${VARIANT_DIR}")
 endif()
+
+#set(OUTPUT_DIR "${sourceDir}/build/${VARIANT}/${presetName}")
+#message(STATUS ${OUTPUT_DIR})
+#set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${OUTPUT_DIR})
 
 set(compiler_define ${compiler_define}
     "USE_HAL_DRIVER"
@@ -56,9 +72,9 @@ target_compile_definitions(${EXECUTABLE} PRIVATE ${compiler_define})
 
 target_compile_options(${EXECUTABLE} PRIVATE
 	${CPU_PARAMETERS}
-#	-Wall
-#	-Wpedantic
-#	-Wno-unused-parameter
+	-Wall
+	-Wpedantic
+	-Wno-unused-parameter
 )
 
 target_link_options(${EXECUTABLE} PRIVATE
@@ -89,4 +105,12 @@ add_custom_command(TARGET ${EXECUTABLE} POST_BUILD
 # Convert to bin file -> add conditional check?
 add_custom_command(TARGET ${EXECUTABLE} POST_BUILD
 	COMMAND ${CMAKE_OBJCOPY} -O binary $<TARGET_FILE:${EXECUTABLE}> ${EXECUTABLE}.bin
+)
+
+# Copy output files to variant dir
+add_custom_command(TARGET ${EXECUTABLE} POST_BUILD
+	COMMAND
+	${CMAKE_COMMAND} -E copy_directory
+	$<TARGET_FILE_DIR:${EXECUTABLE}>
+	${PROJ_PATH}/build/${VARIANT}/$<CONFIG>
 )
