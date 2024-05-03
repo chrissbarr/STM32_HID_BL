@@ -1,3 +1,6 @@
 [submodule "Drivers/STM32CubeF4"]
 	path = Drivers/STM32CubeF4
 	url = https://github.com/STMicroelectronics/STM32CubeF4
+[submodule "Drivers/STM32CubeH7"]
+	path = Drivers/STM32CubeH7
+	url = https://github.com/STMicroelectronics/STM32CubeH7.git
