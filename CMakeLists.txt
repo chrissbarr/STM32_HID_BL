@@ -18,13 +18,6 @@ enable_language(C CXX ASM)
 
 set(EXECUTABLE                      ${CMAKE_PROJECT_NAME})
 
-set(CPU_PARAMETERS ${CPU_PARAMETERS}
-    -mthumb
-    -mcpu=cortex-m4
-    -mfpu=fpv4-sp-d16
-    -mfloat-abi=hard
-)
-
 set(SOURCES
 Src/main.cpp
 )
@@ -59,7 +52,8 @@ set(compiler_define ${compiler_define}
 
 if(${stm32_fam_define} STREQUAL "STM32F4")
 	add_subdirectory("Core/STM32F4")
-	include(CMake/STM32F4xx_HAL_Driver.cmake)
+elseif(${stm32_fam_define} STREQUAL "STM32H7")
+	add_subdirectory("Core/STM32H7")
 else()
 	message(FATAL_ERROR "Unsupported STM32 family set: ${stm32_fam_define}")
 endif()

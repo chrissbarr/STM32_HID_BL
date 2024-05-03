@@ -1,7 +1,7 @@
 /* USER CODE BEGIN Header */
 /**
   ******************************************************************************
-  * @file         stm32f4xx_hal_msp.c
+  * @file         stm32h7xx_hal_msp.c
   * @brief        This file provides code for the MSP Initialization
   *               and de-Initialization codes.
   ******************************************************************************
@@ -20,7 +20,6 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "stm32f4xx_hal.h"
 /* USER CODE BEGIN Includes */
 
 /* USER CODE END Includes */
@@ -69,7 +68,6 @@ void HAL_MspInit(void)
   /* USER CODE END MspInit 0 */
 
   __HAL_RCC_SYSCFG_CLK_ENABLE();
-  __HAL_RCC_PWR_CLK_ENABLE();
 
   /* System interrupt init*/
 
@@ -80,6 +78,8 @@ void HAL_MspInit(void)
   __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOD_CLK_ENABLE();
   __HAL_RCC_GPIOE_CLK_ENABLE();
+  __HAL_RCC_GPIOF_CLK_ENABLE();
+  __HAL_RCC_GPIOG_CLK_ENABLE();
 
   /* USER CODE END MspInit 1 */
 }
@@ -92,29 +92,31 @@ void HAL_MspInit(void)
 */
 void HAL_PCD_MspInit(PCD_HandleTypeDef* hpcd)
 {
-  GPIO_InitTypeDef GPIO_InitStruct = {0};
-  if(hpcd->Instance==USB_OTG_FS)
+  RCC_PeriphCLKInitTypeDef PeriphClkInitStruct = {0};
+  if(hpcd->Instance==USB_OTG_HS)
   {
-  /* USER CODE BEGIN USB_OTG_FS_MspInit 0 */
+  /* USER CODE BEGIN USB_OTG_HS_MspInit 0 */
 
-  /* USER CODE END USB_OTG_FS_MspInit 0 */
+  /* USER CODE END USB_OTG_HS_MspInit 0 */
 
-    /**USB_OTG_FS GPIO Configuration
-    PA11     ------> USB_OTG_FS_DM
-    PA12     ------> USB_OTG_FS_DP
-    */
-    GPIO_InitStruct.Pin = GPIO_PIN_11|GPIO_PIN_12;
-    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-    GPIO_InitStruct.Alternate = GPIO_AF10_OTG_FS;
-    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+  /** Initializes the peripherals clock
+  */
+    PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_USB;
+    PeriphClkInitStruct.UsbClockSelection = RCC_USBCLKSOURCE_PLL;
+    if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK)
+    {
+      Error_Handler();
+    }
+
+  /** Enable USB Voltage detector
+  */
+    HAL_PWREx_EnableUSBVoltageDetector();
 
     /* Peripheral clock enable */
-    __HAL_RCC_USB_OTG_FS_CLK_ENABLE();
-  /* USER CODE BEGIN USB_OTG_FS_MspInit 1 */
+    __HAL_RCC_USB_OTG_HS_CLK_ENABLE();
+  /* USER CODE BEGIN USB_OTG_HS_MspInit 1 */
 
-  /* USER CODE END USB_OTG_FS_MspInit 1 */
+  /* USER CODE END USB_OTG_HS_MspInit 1 */
   }
 
 }
@@ -127,23 +129,16 @@ void HAL_PCD_MspInit(PCD_HandleTypeDef* hpcd)
 */
 void HAL_PCD_MspDeInit(PCD_HandleTypeDef* hpcd)
 {
-  if(hpcd->Instance==USB_OTG_FS)
+  if(hpcd->Instance==USB_OTG_HS)
   {
-  /* USER CODE BEGIN USB_OTG_FS_MspDeInit 0 */
+  /* USER CODE BEGIN USB_OTG_HS_MspDeInit 0 */
 
-  /* USER CODE END USB_OTG_FS_MspDeInit 0 */
+  /* USER CODE END USB_OTG_HS_MspDeInit 0 */
     /* Peripheral clock disable */
-    __HAL_RCC_USB_OTG_FS_CLK_DISABLE();
+    __HAL_RCC_USB_OTG_HS_CLK_DISABLE();
+  /* USER CODE BEGIN USB_OTG_HS_MspDeInit 1 */
 
-    /**USB_OTG_FS GPIO Configuration
-    PA11     ------> USB_OTG_FS_DM
-    PA12     ------> USB_OTG_FS_DP
-    */
-    HAL_GPIO_DeInit(GPIOA, GPIO_PIN_11|GPIO_PIN_12);
-
-  /* USER CODE BEGIN USB_OTG_FS_MspDeInit 1 */
-
-  /* USER CODE END USB_OTG_FS_MspDeInit 1 */
+  /* USER CODE END USB_OTG_HS_MspDeInit 1 */
   }
 
 }
