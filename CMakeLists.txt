@@ -54,6 +54,7 @@ endif()
 set(compiler_define ${compiler_define}
     "USE_HAL_DRIVER"
     ${stm32_mcu_define}
+	HSE_VALUE=${stm32_hse}
 )
 
 if(${stm32_fam_define} STREQUAL "STM32F4")
