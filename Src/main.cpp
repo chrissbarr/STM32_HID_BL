@@ -3,20 +3,37 @@
 
 #include "usb_device.h"
 
-#define HID_RX_SIZE 64
+constexpr uint16_t HID_RX_SIZE = 64;
 uint8_t USB_RX_Buffer[HID_RX_SIZE];
 volatile uint8_t new_data_is_received = false;
+
+/* Size of FW buffer / chunk size for writing to Flash (Bytes) */
+constexpr uint16_t flashPageSize = 1024;
+/* Buffer FW received from USB is loaded into */
+static uint8_t pageData[flashPageSize];
+/* Current write position in pageData */
+uint16_t pageOffset = 0;
+/* Space taken by bootloader / offset user app starts at (Bytes) */
+constexpr uint16_t appFlashOffset = 0x4000;
+/* Start of user app in Flash (in units of flashPageSize) */
+constexpr uint16_t startFlashPage = appFlashOffset / flashPageSize;
+/* Current write position in Flash (in units of flashPageSize) */
+uint16_t currentFlashPage = startFlashPage;
+
 
 static uint8_t HIDCommandSig[7] = {'B','T','L','D','C','M','D'};
 
 enum class HIDCommand : uint8_t {
     ResetPages = 0x00,
     ResetMCU = 0x01,
-    LEDFlash = 0x02,
+    AckDataRecv = 0x02,
+    LEDFlash = 0x03,
 };
 
 
 void GPIO_Init();
+void write_flash_sector(uint32_t currentPage);
+extern "C" uint8_t USBD_CUSTOM_HID_SendReport(USBD_HandleTypeDef *pdev, uint8_t *report, uint16_t len);
 
 void set_LED(bool on)
 {
@@ -48,10 +65,19 @@ int main(void)
                 switch(cmd) {
                     case HIDCommand::ResetPages: {
 
+                        /* Reset buffers and write position so that we are writing from start */
+                        currentFlashPage = startFlashPage;
+                        pageOffset = 0;
+
                         break;
                     }
                     case HIDCommand::ResetMCU: {
-
+                        /* Flush any leftover data in the buffer */
+                        if (pageOffset > 0) {
+                            write_flash_sector(currentFlashPage);
+                        }
+                        HAL_Delay(100);
+                        HAL_NVIC_SystemReset();
                         break;
                     }
                     case HIDCommand::LEDFlash: {
@@ -60,6 +86,28 @@ int main(void)
                         set_LED(false);
                         break;
                     }
+                    default: {
+                        Error_Handler();
+                    }
+                }
+            } else {
+                /* If not a command, we have received FW data*/
+                /* Copy the FW data into the buffer */
+                memcpy(pageData + pageOffset, USB_RX_Buffer, HID_RX_SIZE);
+                pageOffset += HID_RX_SIZE;
+
+                /* If buffer is full, write FW out to flash */
+                if (pageOffset == flashPageSize) {
+                    write_flash_sector(currentFlashPage);
+                    currentFlashPage++;
+
+                    /* Reset buffer */
+                    pageOffset = 0;
+
+                    uint8_t cmdSend[8];
+                    memcpy(cmdSend, HIDCommandSig, sizeof(HIDCommandSig));
+                    cmdSend[7] = static_cast<uint8_t>(HIDCommand::AckDataRecv);
+                    USBD_CUSTOM_HID_SendReport(&hUsbDeviceFS, cmdSend, 8);
                 }
             }
         }
@@ -75,6 +123,10 @@ void GPIO_Init()
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
     HAL_GPIO_Init(LED_PORT, &GPIO_InitStruct);
+}
+
+void write_flash_sector(uint32_t currentPage) {
+    // todo
 }
 
 extern "C" void Error_Handler(void)
