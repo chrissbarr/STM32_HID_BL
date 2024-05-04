@@ -1,6 +1,9 @@
 #include "main.h"
 #include "variant.h"
 
+#include "usb_device.h"
+
+
 void GPIO_Init();
 
 void set_LED(bool on)
@@ -14,6 +17,7 @@ int main(void)
     HAL_Init();
     SystemClock_Config();
     GPIO_Init();
+    MX_USB_DEVICE_Init();
     set_LED(true);
     HAL_Delay(500);
     set_LED(false);
@@ -49,7 +53,7 @@ void GPIO_Init()
 
 }
 
-void Error_Handler(void)
+extern "C" void Error_Handler(void)
 {
     __disable_irq();
     while (1)
