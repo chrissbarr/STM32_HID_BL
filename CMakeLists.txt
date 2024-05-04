@@ -96,11 +96,3 @@ add_custom_command(TARGET ${EXECUTABLE} POST_BUILD
 add_custom_command(TARGET ${EXECUTABLE} POST_BUILD
 	COMMAND ${CMAKE_OBJCOPY} -O binary $<TARGET_FILE:${EXECUTABLE}> ${EXECUTABLE}.bin
 )
-
-# Copy output files to variant dir
-add_custom_command(TARGET ${EXECUTABLE} POST_BUILD
-	COMMAND
-	${CMAKE_COMMAND} -E copy_directory
-	$<TARGET_FILE_DIR:${EXECUTABLE}>
-	${PROJ_PATH}/build/${VARIANT}/$<CONFIG>
-)

@@ -1,10 +1,20 @@
 # !/usr/bin/python
 
 from pathlib import Path
+import shutil
 import subprocess
+import sys
 
 # list of build configs
 configs = ["Debug", "Release"]
+
+# output dir for built variants
+outputDir = Path('Binaries')
+# output file extensions to put in output dir
+outputFileFilter = ['.bin', '.hex', '.elf', '.map']
+
+# remove existing built binaries
+shutil.rmtree(outputDir)
 
 # get list of all variants
 p = Path('Variants')
@@ -20,22 +30,38 @@ for v in variants:
 
 # build each variant in each config
 for variant in variants_dict:
-    print(f"Processing variant: {variant['name']}")
-
     for config in configs:
-        print(f"Processing config: {config}")
 
+        cfgName = f"{variant['name']}_{config}"
+        print("----")
+        print("----")
+        print(f"== Processing: {cfgName} ==")
+
+        print("== Configure ==")
         d = subprocess.run(["cmake", "..", "--preset", config, "-D", f"VARIANT={variant['name']}"], cwd='build')
-        if (d.returncode is not 0):
+        if (d.returncode != 0):
             print("Detected error, aborting variant!")
             variant['pass'] = False
             break
 
+        print("== Build ==")
         d = subprocess.run(["cmake", "--build", config], cwd='build')
-        if (d.returncode is not 0):
+        if (d.returncode != 0):
             print("Detected error, aborting variant!")
             variant['pass'] = False
             break
+
+        # create output directory if doesn't exist
+        configOutputDir = outputDir / variant['name'] / config
+        configOutputDir.mkdir(parents=True, exist_ok=True)
+
+        buildDir = Path('build') / config
+        files = [x for x in buildDir.glob('*') if x.is_file()]
+        for file in files:
+            if file.suffix in outputFileFilter:
+                shutil.copy(file, configOutputDir)
+
+        print(f"{cfgName} completed successfully!")
 
 passed = 0
 for variant in variants_dict:
