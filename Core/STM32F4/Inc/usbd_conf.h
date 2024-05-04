@@ -35,7 +35,9 @@
 #include "stm32f4xx_hal.h"
 
 /* USER CODE BEGIN INCLUDE */
-
+/* Set HID report sizes before definition in usbd_customhid.h */
+#define CUSTOM_HID_EPIN_SIZE 8
+#define CUSTOM_HID_EPOUT_SIZE 64
 /* USER CODE END INCLUDE */
 
 /** @addtogroup USBD_OTG_DRIVER

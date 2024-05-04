@@ -31,7 +31,8 @@
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
-
+extern uint8_t USB_RX_Buffer[CUSTOM_HID_EPOUT_SIZE];
+extern volatile uint8_t new_data_is_received;
 /* USER CODE END PV */
 
 /** @addtogroup STM32_USB_OTG_DEVICE_LIBRARY
@@ -91,7 +92,18 @@
 __ALIGN_BEGIN static uint8_t CUSTOM_HID_ReportDesc_FS[USBD_CUSTOM_HID_REPORT_DESC_SIZE] __ALIGN_END =
 {
   /* USER CODE BEGIN 0 */
-  0x00,
+  0x06, 0x00, 0xFF,//USAGE_PAGE (Vendor Defined Page 1)       // 3 B
+  0x09, 0x00,      //USAGE (Undefined)                        // 5 B
+  0xA1, 0x01,      //COLLECTION (Application)                 // 7 B
+
+  0x75, 0x08,      //  REPORT_SIZE (8)                        // 9 B
+  0x95, CUSTOM_HID_EPOUT_SIZE,      //  REPORT_COUNT (64)
+  0x91, 0x03,			 //  OUTPUT (Cnst, Var, Abs)												   // 14B
+
+  0x75, 0x08,      //  REPORT_SIZE (8)                        // 9 B
+  0x95, CUSTOM_HID_EPIN_SIZE,      //  REPORT_COUNT (8)
+  0x81, 0x03,			 //  INPUT (Cnst, Var, Abs)												   // 14B
+
   /* USER CODE END 0 */
   0xC0    /*     END_COLLECTION	             */
 };
@@ -176,8 +188,13 @@ static int8_t CUSTOM_HID_DeInit_FS(void)
 static int8_t CUSTOM_HID_OutEvent_FS(uint8_t event_idx, uint8_t state)
 {
   /* USER CODE BEGIN 6 */
-  UNUSED(event_idx);
-  UNUSED(state);
+  USBD_CUSTOM_HID_HandleTypeDef *hhid = (USBD_CUSTOM_HID_HandleTypeDef*) hUsbDeviceFS.pClassData;
+
+  for (uint8_t i = 0; i < CUSTOM_HID_EPOUT_SIZE; i++) {
+    /* To read user data from PC */
+    USB_RX_Buffer[i] = hhid->Report_buf[i];
+  }
+  new_data_is_received = 1;
 
   /* Start next USB packet transfer once data processing is completed */
   if (USBD_CUSTOM_HID_ReceivePacket(&hUsbDeviceFS) != (uint8_t)USBD_OK)
@@ -185,7 +202,7 @@ static int8_t CUSTOM_HID_OutEvent_FS(uint8_t event_idx, uint8_t state)
     return -1;
   }
 
-  return (USBD_OK);
+  return USBD_OK;
   /* USER CODE END 6 */
 }
 
