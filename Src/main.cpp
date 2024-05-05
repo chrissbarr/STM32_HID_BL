@@ -19,8 +19,6 @@ constexpr uint16_t appFlashOffset = 0x4000;
 constexpr uint16_t startFlashPage = appFlashOffset / flashPageSize;
 /* Current write position in Flash (in units of flashPageSize) */
 uint16_t currentFlashPage = startFlashPage;
-uint16_t eraseSector = 1;
-
 
 static uint8_t HIDCommandSig[7] = {'B','T','L','D','C','M','D'};
 
@@ -66,7 +64,6 @@ int main(void)
                         /* Reset buffers and write position so that we are writing from start */
                         currentFlashPage = startFlashPage;
                         pageOffset = 0;
-                        eraseSector = 1;
 
                         break;
                     }
@@ -126,6 +123,7 @@ void GPIO_Init()
 
 void write_flash_sector(uint32_t currentPage)
 {
+    /* Address in flash memory that the page we are writing will start from */
     const uint32_t pageAddress = FLASH_BASE + (currentPage * flashPageSize);
 
     set_LED(true);
@@ -133,21 +131,21 @@ void write_flash_sector(uint32_t currentPage)
     HAL_FLASH_Unlock();
 
     /* Check if pageAddress is start of new flash sector */
-    bool eraseRequired = false;
-    for (uint32_t i = 0; i < flashSectorCount; i++) {
-        if (flashSectors[i] == pageAddress) {
-            eraseRequired = true;
+    int eraseSector = -1;
+    for (int i = 0; i < static_cast<int>(FlashSectors.size()); i++) {
+        if (FlashSectors[i].start == pageAddress) {
+            eraseSector = i;
             break;
         }
     }
 
     /* If page is in a new flash sector, need to erase flash sector before writing */
-    if (eraseRequired)
+    if (eraseSector != -1)
     {
         FLASH_EraseInitTypeDef EraseInit{};
         EraseInit.TypeErase = FLASH_TYPEERASE_SECTORS;
         EraseInit.VoltageRange = FLASH_VOLTAGE_RANGE_3;
-        EraseInit.Sector = eraseSector++;
+        EraseInit.Sector = eraseSector;
         EraseInit.NbSectors = 1;
         uint32_t SectorError;
         HAL_FLASHEx_Erase(&EraseInit, &SectorError);
@@ -166,7 +164,7 @@ void write_flash_sector(uint32_t currentPage)
         data += pageData[i];
         uint32_t writeAddr = pageAddress + i;
 
-        if (writeAddr > flashEnd) { break; }
+        if (writeAddr >= FlashSectors.back().start + FlashSectors.back().size) { break; }
 
         HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, pageAddress + i, data);
     }
