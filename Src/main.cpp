@@ -19,6 +19,7 @@ constexpr uint16_t appFlashOffset = 0x4000;
 constexpr uint16_t startFlashPage = appFlashOffset / flashPageSize;
 /* Current write position in Flash (in units of flashPageSize) */
 uint16_t currentFlashPage = startFlashPage;
+uint16_t eraseSector = 1;
 
 
 static uint8_t HIDCommandSig[7] = {'B','T','L','D','C','M','D'};
@@ -68,6 +69,7 @@ int main(void)
                         /* Reset buffers and write position so that we are writing from start */
                         currentFlashPage = startFlashPage;
                         pageOffset = 0;
+                        eraseSector = 1;
 
                         break;
                     }
@@ -125,8 +127,44 @@ void GPIO_Init()
     HAL_GPIO_Init(LED_PORT, &GPIO_InitStruct);
 }
 
-void write_flash_sector(uint32_t currentPage) {
-    // todo
+void write_flash_sector(uint32_t currentPage)
+{
+    const uint32_t pageAddress = FLASH_BASE + (currentPage * flashPageSize);
+
+    set_LED(true);
+
+    HAL_FLASH_Unlock();
+
+    /* If page is in a new flash sector, need to erase flash sector before writing */
+    if ((currentPage == 16) || (currentPage == 32) ||
+        (currentPage == 48) || (currentPage == 64) ||
+        (currentPage % 128 == 0))
+    {
+        FLASH_EraseInitTypeDef EraseInit{};
+        EraseInit.TypeErase = FLASH_TYPEERASE_SECTORS;
+        EraseInit.VoltageRange = FLASH_VOLTAGE_RANGE_3;
+        EraseInit.Sector = eraseSector++;
+        EraseInit.NbSectors = 1;
+        uint32_t SectorError;
+        HAL_FLASHEx_Erase(&EraseInit, &SectorError);
+    }
+
+    /* Write page to flash one word at a time */
+    for (int i = 0; i < flashPageSize; i += 4)
+    {
+        uint32_t data = 0;
+        data = pageData[i + 3];
+        data <<= 8;
+        data += pageData[i + 2];
+        data <<= 8;
+        data += pageData[i + 1];
+        data <<= 8;
+        data += pageData[i];
+        HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, pageAddress + i, data);
+    }
+
+    HAL_FLASH_Lock();
+    set_LED(false);
 }
 
 extern "C" void Error_Handler(void)
