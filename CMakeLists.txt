@@ -20,6 +20,7 @@ set(EXECUTABLE                      ${CMAKE_PROJECT_NAME})
 
 set(SOURCES
 Src/main.cpp
+Src/variantChecks.cpp
 )
 
 add_executable(${EXECUTABLE} ${SOURCES})
