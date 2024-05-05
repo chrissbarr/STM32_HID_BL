@@ -6,7 +6,7 @@ import subprocess
 import sys
 
 # list of build configs
-configs = ["Debug", "Release"]
+configs = ["Release"]
 
 # output dir for built variants
 outputDir = Path('Binaries')
