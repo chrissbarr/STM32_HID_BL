@@ -67,6 +67,7 @@ target_compile_options(${EXECUTABLE} PRIVATE
 	-Wno-unused-parameter
 )
 
+set_property(TARGET ${EXECUTABLE} PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
 target_link_options(${EXECUTABLE} PRIVATE
 	-T${linker_script_SRC}
 	${CPU_PARAMETERS}
