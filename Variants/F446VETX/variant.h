@@ -15,6 +15,10 @@
 
 void SystemClock_Config(void);
 
+extern const uint32_t flashSectorCount;
+extern const uint32_t flashEnd;
+extern const uint32_t flashSectors[];
+
 #ifdef __cplusplus
 }
 #endif

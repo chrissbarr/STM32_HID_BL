@@ -3,6 +3,21 @@
 
 #include "stm32f4xx_hal.h"
 
+const uint32_t flashSectorCount = 8;
+
+const uint32_t flashEnd = 0x0807FFFF;
+
+const uint32_t flashSectors[] = {
+0x08000000,
+0x08004000,
+0x08008000,
+0x0800C000,
+0x08010000,
+0x08020000,
+0x08040000,
+0x08060000,
+};
+
 void SystemClock_Config(void)
 {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};

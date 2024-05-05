@@ -31,19 +31,16 @@ enum class HIDCommand : uint8_t {
     LEDFlash = 0x03,
 };
 
-
-void GPIO_Init();
-void write_flash_sector(uint32_t currentPage);
+/* External function declarations */
 extern "C" uint8_t USBD_CUSTOM_HID_SendReport(USBD_HandleTypeDef *pdev, uint8_t *report, uint16_t len);
 
-void set_LED(bool on)
-{
-    HAL_GPIO_WritePin(LED_PORT, LED_PIN, on == LED_ACTIVEHIGH ? GPIO_PIN_SET : GPIO_PIN_RESET);
-}
+/* Internal function declarations */
+void GPIO_Init();
+void write_flash_sector(uint32_t currentPage);
+void set_LED(bool on);
 
 int main(void)
 {
-
     HAL_Init();
     SystemClock_Config();
     GPIO_Init();
@@ -135,10 +132,17 @@ void write_flash_sector(uint32_t currentPage)
 
     HAL_FLASH_Unlock();
 
+    /* Check if pageAddress is start of new flash sector */
+    bool eraseRequired = false;
+    for (uint32_t i = 0; i < flashSectorCount; i++) {
+        if (flashSectors[i] == pageAddress) {
+            eraseRequired = true;
+            break;
+        }
+    }
+
     /* If page is in a new flash sector, need to erase flash sector before writing */
-    if ((currentPage == 16) || (currentPage == 32) ||
-        (currentPage == 48) || (currentPage == 64) ||
-        (currentPage % 128 == 0))
+    if (eraseRequired)
     {
         FLASH_EraseInitTypeDef EraseInit{};
         EraseInit.TypeErase = FLASH_TYPEERASE_SECTORS;
@@ -160,11 +164,20 @@ void write_flash_sector(uint32_t currentPage)
         data += pageData[i + 1];
         data <<= 8;
         data += pageData[i];
+        uint32_t writeAddr = pageAddress + i;
+
+        if (writeAddr > flashEnd) { break; }
+
         HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, pageAddress + i, data);
     }
 
     HAL_FLASH_Lock();
     set_LED(false);
+}
+
+void set_LED(bool on)
+{
+    HAL_GPIO_WritePin(LED_PORT, LED_PIN, on == LED_ACTIVEHIGH ? GPIO_PIN_SET : GPIO_PIN_RESET);
 }
 
 extern "C" void Error_Handler(void)
