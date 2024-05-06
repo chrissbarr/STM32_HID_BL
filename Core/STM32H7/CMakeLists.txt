@@ -3,8 +3,17 @@ Src/system_stm32h7xx.c
 Src/stm32h7xx_hal_msp.c
 Src/stm32h7xx_it.c
 Src/syscalls.c
+Src/usb_device.c
+Src/usbd_conf.c
+Src/usb_wrapper.c
+Src/usbd_custom_hid_if.c
+Src/usbd_desc.c
 Inc/stm32h7xx_it.h
 Inc/stm32h7xx_hal_conf.h
+Inc/usb_device.h
+Inc/usbd_conf.h
+Inc/usbd_custom_hid_if.h
+Inc/usbd_desc.h
 )
 target_sources(${EXECUTABLE} PRIVATE ${SOURCES})
 target_include_directories(${EXECUTABLE} PRIVATE Inc)
@@ -348,5 +357,32 @@ Drivers/STM32CubeH7/Drivers/CMSIS/Core/Include/tz_context.h
 list(TRANSFORM SOURCES PREPEND "${PROJ_PATH}/")
 target_sources(${EXECUTABLE} PRIVATE ${SOURCES})
 target_include_directories(${EXECUTABLE} PUBLIC ${PROJ_PATH}/Drivers/STM32CubeH7/Drivers/CMSIS/Core/Include/)
+
+# USB Middleware
+# find Drivers/STM32CubeH7/Middlewares/ST/STM32_USB_Device_Library/Core/ -type f
+set(SOURCES
+#Drivers/STM32CubeH7/Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_conf_template.h
+Drivers/STM32CubeH7/Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_core.h
+Drivers/STM32CubeH7/Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_ctlreq.h
+Drivers/STM32CubeH7/Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_def.h
+#Drivers/STM32CubeH7/Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_desc_template.h
+Drivers/STM32CubeH7/Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_ioreq.h
+#Drivers/STM32CubeH7/Middlewares/ST/STM32_USB_Device_Library/Core/Src/usbd_conf_template.c
+Drivers/STM32CubeH7/Middlewares/ST/STM32_USB_Device_Library/Core/Src/usbd_core.c
+Drivers/STM32CubeH7/Middlewares/ST/STM32_USB_Device_Library/Core/Src/usbd_ctlreq.c
+#Drivers/STM32CubeH7/Middlewares/ST/STM32_USB_Device_Library/Core/Src/usbd_desc_template.c
+Drivers/STM32CubeH7/Middlewares/ST/STM32_USB_Device_Library/Core/Src/usbd_ioreq.c
+)
+list(TRANSFORM SOURCES PREPEND "${PROJ_PATH}/")
+target_sources(${EXECUTABLE} PRIVATE ${SOURCES})
+target_include_directories(${EXECUTABLE} PUBLIC ${PROJ_PATH}/Drivers/STM32CubeH7/Middlewares/ST/STM32_USB_Device_Library/Core/Inc/)
+
+set(SOURCES
+Drivers/STM32CubeH7/Middlewares/ST/STM32_USB_Device_Library/Class/CustomHID/Inc/usbd_customhid.h
+Drivers/STM32CubeH7/Middlewares/ST/STM32_USB_Device_Library/Class/CustomHID/Src/usbd_customhid.c
+)
+list(TRANSFORM SOURCES PREPEND "${PROJ_PATH}/")
+target_sources(${EXECUTABLE} PRIVATE ${SOURCES})
+target_include_directories(${EXECUTABLE} PUBLIC ${PROJ_PATH}/Drivers/STM32CubeH7/Middlewares/ST/STM32_USB_Device_Library/Class/CustomHID/Inc/)
 
 target_sources(${EXECUTABLE} PRIVATE "${PROJ_PATH}/Drivers/STM32CubeH7/Drivers/CMSIS/Device/ST/STM32H7xx/Source/Templates/gcc/${stm32_startup_file}")

@@ -59,6 +59,8 @@ else()
 	message(FATAL_ERROR "Unsupported STM32 family set: ${stm32_fam_define}")
 endif()
 
+add_subdirectory("Core/Wrapper")
+
 target_compile_definitions(${EXECUTABLE} PRIVATE ${compiler_define})
 
 target_compile_options(${EXECUTABLE} PRIVATE

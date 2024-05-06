@@ -7,6 +7,7 @@ Src/usb_device.c
 Src/usbd_conf.c
 Src/usbd_custom_hid_if.c
 Src/usbd_desc.c
+Src/usb_wrapper.c
 Inc/stm32f4xx_hal_conf.h
 Inc/stm32f4xx_it.h
 Inc/usb_device.h
