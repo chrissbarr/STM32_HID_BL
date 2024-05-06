@@ -1,4 +1,5 @@
 set(SOURCES
+Src/flash_wrapper.cpp
 Src/system_stm32h7xx.c
 Src/stm32h7xx_hal_msp.c
 Src/stm32h7xx_it.c

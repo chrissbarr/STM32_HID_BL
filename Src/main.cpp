@@ -1,9 +1,11 @@
 #include "main.h"
 #include "variant.h"
 
-#include "usb_device.h"
+#include "usb_wrapper.h"
+#include "flash_wrapper.h"
 
 #include <array>
+#include <cstring>
 
 constexpr uint16_t HID_RX_SIZE = 64;
 uint8_t USB_RX_Buffer[HID_RX_SIZE];
@@ -34,7 +36,6 @@ enum class HIDCommand : uint8_t {
 
 /* Internal function declarations */
 void GPIO_Init();
-void write_flash_sector(uint32_t currentPage);
 void set_LED(bool on);
 
 int main(void)
@@ -70,7 +71,7 @@ int main(void)
                     case HIDCommand::ResetMCU: {
                         /* Flush any leftover data in the buffer */
                         if (pageOffset > 0) {
-                            write_flash_sector(currentFlashPage);
+                            write_flash_sector(flashPageData, FlashSectors, currentFlashPage);
                         }
                         HAL_Delay(100);
                         HAL_NVIC_SystemReset();
@@ -94,7 +95,9 @@ int main(void)
 
                 /* If buffer is full, write FW out to flash */
                 if (pageOffset == flashPageData.size()) {
-                    write_flash_sector(currentFlashPage);
+                    set_LED(true);
+                    write_flash_sector(flashPageData, FlashSectors, currentFlashPage);
+                    set_LED(false);
                     currentFlashPage++;
 
                     /* Reset buffer */
@@ -119,58 +122,6 @@ void GPIO_Init()
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
     HAL_GPIO_Init(LED_PORT, &GPIO_InitStruct);
-}
-
-void write_flash_sector(uint32_t currentPage)
-{
-    /* Address in flash memory that the page we are writing will start from */
-    const uint32_t pageAddress = appFlashStart + (currentPage * flashPageData.size());
-
-    set_LED(true);
-
-    HAL_FLASH_Unlock();
-
-    /* Check if pageAddress is start of new flash sector */
-    int eraseSector = -1;
-    for (int i = 0; i < static_cast<int>(FlashSectors.size()); i++) {
-        if (FlashSectors[i].start == pageAddress) {
-            eraseSector = i;
-            break;
-        }
-    }
-
-    /* If page is in a new flash sector, need to erase flash sector before writing */
-    if (eraseSector != -1)
-    {
-        FLASH_EraseInitTypeDef EraseInit{};
-        EraseInit.TypeErase = FLASH_TYPEERASE_SECTORS;
-        EraseInit.VoltageRange = FLASH_VOLTAGE_RANGE_3;
-        EraseInit.Sector = eraseSector;
-        EraseInit.NbSectors = 1;
-        uint32_t SectorError;
-        HAL_FLASHEx_Erase(&EraseInit, &SectorError);
-    }
-
-    /* Write page to flash one word at a time */
-    for (std::size_t i = 0; i < flashPageData.size(); i += 4)
-    {
-        uint32_t data = 0;
-        data = flashPageData[i + 3];
-        data <<= 8;
-        data += flashPageData[i + 2];
-        data <<= 8;
-        data += flashPageData[i + 1];
-        data <<= 8;
-        data += flashPageData[i];
-        uint32_t writeAddr = pageAddress + i;
-
-        if (writeAddr >= FlashSectors.back().start + FlashSectors.back().size) { break; }
-
-        HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, pageAddress + i, data);
-    }
-
-    HAL_FLASH_Lock();
-    set_LED(false);
 }
 
 void set_LED(bool on)
