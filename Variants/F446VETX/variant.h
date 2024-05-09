@@ -13,6 +13,7 @@ extern "C" void SystemClock_Config(void);
 
 #define BOOT1_PIN GPIO_PIN_2
 #define BOOT1_PORT GPIOB
+#define BOOT1_ACTIVEHIGH false
 
 #define LED_PIN GPIO_PIN_14
 #define LED_PORT GPIOB

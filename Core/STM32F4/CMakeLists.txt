@@ -8,6 +8,7 @@ Src/usbd_conf.c
 Src/usbd_custom_hid_if.c
 Src/usbd_desc.c
 Src/usb_wrapper.c
+Src/rtc_wrapper.cpp
 Src/flash_wrapper.cpp
 Inc/stm32f4xx_hal_conf.h
 Inc/stm32f4xx_it.h

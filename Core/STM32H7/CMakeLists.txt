@@ -7,6 +7,7 @@ Src/syscalls.c
 Src/usb_device.c
 Src/usbd_conf.c
 Src/usb_wrapper.c
+Src/rtc_wrapper.cpp
 Src/usbd_custom_hid_if.c
 Src/usbd_desc.c
 Inc/stm32h7xx_it.h

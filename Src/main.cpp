@@ -3,6 +3,7 @@
 
 #include "usb_wrapper.h"
 #include "flash_wrapper.h"
+#include "rtc_wrapper.h"
 
 #include <array>
 #include <cstring>
@@ -25,9 +26,10 @@ constexpr uint32_t appFlashStart = FlashSectors[0].start + appFlashOffset;
 /* Current write position in Flash (in units of flashPageSize) */
 uint32_t currentFlashPage = 0;
 
-static uint8_t HIDCommandSig[7] = {'B','T','L','D','C','M','D'};
+static uint8_t HIDCommandSig[7] = {'B', 'T', 'L', 'D', 'C', 'M', 'D'};
 
-enum class HIDCommand : uint8_t {
+enum class HIDCommand : uint8_t
+{
     ResetPages = 0x00,
     ResetMCU = 0x01,
     AckDataRecv = 0x02,
@@ -37,64 +39,95 @@ enum class HIDCommand : uint8_t {
 /* Internal function declarations */
 void GPIO_Init();
 void set_LED(bool on);
+void Start_User_Application();
 
 int main(void)
 {
     HAL_Init();
     SystemClock_Config();
     GPIO_Init();
-    USB_Init();
 
-    set_LED(true);
-    HAL_Delay(500);
-    set_LED(false);
-    HAL_Delay(500);
+    bool startBootloader = false;
+    if (RTCMagicValueSet())
+    {
+        RTCClearMagicValue();
+        startBootloader = true;
+    }
+    if (HAL_GPIO_ReadPin(BOOT1_PORT, BOOT1_PIN) == BOOT1_ACTIVEHIGH)
+    {
+        startBootloader = true;
+    }
+
+    if (!startBootloader)
+    {
+        Start_User_Application();
+    }
+
+    for (int i = 0; i < 5; i++)
+    {
+        set_LED(true);
+        HAL_Delay(500);
+        set_LED(false);
+        HAL_Delay(500);
+    }
+
+    USB_Init();
 
     while (1)
     {
-        if (new_data_is_received == 1) {
+        if (new_data_is_received == 1)
+        {
             new_data_is_received = 0;
 
             /* If data received is command, process command */
             if (memcmp(USB_RX_Buffer, HIDCommandSig, sizeof(HIDCommandSig)) == 0)
             {
                 HIDCommand cmd = static_cast<HIDCommand>(USB_RX_Buffer[7]);
-                switch(cmd) {
-                    case HIDCommand::ResetPages: {
+                switch (cmd)
+                {
+                case HIDCommand::ResetPages:
+                {
 
-                        /* Reset buffers and write position so that we are writing from start */
-                        currentFlashPage = 0;
-                        pageOffset = 0;
+                    /* Reset buffers and write position so that we are writing from start */
+                    currentFlashPage = 0;
+                    pageOffset = 0;
 
-                        break;
-                    }
-                    case HIDCommand::ResetMCU: {
-                        /* Flush any leftover data in the buffer */
-                        if (pageOffset > 0) {
-                            write_flash_sector(flashPageData, FlashSectors, currentFlashPage);
-                        }
-                        HAL_Delay(100);
-                        HAL_NVIC_SystemReset();
-                        break;
-                    }
-                    case HIDCommand::LEDFlash: {
-                        set_LED(true);
-                        HAL_Delay(500);
-                        set_LED(false);
-                        break;
-                    }
-                    default: {
-                        Error_Handler();
-                    }
+                    break;
                 }
-            } else {
+                case HIDCommand::ResetMCU:
+                {
+                    /* Flush any leftover data in the buffer */
+                    if (pageOffset > 0)
+                    {
+                        write_flash_sector(flashPageData, FlashSectors, currentFlashPage);
+                    }
+                    HAL_Delay(100);
+                    HAL_NVIC_SystemReset();
+                    break;
+                }
+                case HIDCommand::LEDFlash:
+                {
+                    set_LED(true);
+                    HAL_Delay(500);
+                    set_LED(false);
+                    break;
+                }
+                default:
+                {
+                    Error_Handler();
+                }
+                }
+            }
+            else
+            {
                 /* If not a command, we have received FW data*/
                 /* Copy the FW data into the buffer */
                 memcpy(flashPageData.data() + pageOffset, USB_RX_Buffer, HID_RX_SIZE);
                 pageOffset += HID_RX_SIZE;
 
                 /* If buffer is full, write FW out to flash */
-                if (pageOffset == flashPageData.size()) {
+                if (pageOffset == flashPageData.size())
+                {
                     set_LED(true);
                     write_flash_sector(flashPageData, FlashSectors, currentFlashPage);
                     set_LED(false);
@@ -111,6 +144,19 @@ int main(void)
             }
         }
     }
+}
+
+void Start_User_Application()
+{
+    // todo
+    typedef void (*pFunction)(void);
+    pFunction Jump_To_Application;
+    uint32_t JumpAddress;
+
+    JumpAddress = *(__IO uint32_t*) (appFlashStart + 4);
+    Jump_To_Application = (pFunction) JumpAddress;
+    __set_MSP(*(uint32_t *) (appFlashStart));
+    Jump_To_Application();
 }
 
 void GPIO_Init()
