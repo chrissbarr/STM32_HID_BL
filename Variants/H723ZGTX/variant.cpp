@@ -48,4 +48,36 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
+
+  /** Initializes the peripherals clock
+  */
+   RCC_PeriphCLKInitTypeDef PeriphClkInitStruct = {};
+  PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_SDMMC | RCC_PERIPHCLK_USB;
+  PeriphClkInitStruct.UsbClockSelection = RCC_USBCLKSOURCE_HSI48;
+  if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK) {
+    Error_Handler();
+  }
+
+  /*Configure the clock recovery system (CRS)**********************************/
+
+  /*Enable CRS Clock*/
+  __HAL_RCC_CRS_CLK_ENABLE();
+
+  /* Default Synchro Signal division factor (not divided) */
+  RCC_CRSInitTypeDef RCC_CRSInitStruct = {};
+  RCC_CRSInitStruct.Prescaler = RCC_CRS_SYNC_DIV1;
+
+  /* Set the SYNCSRC[1:0] bits according to CRS_Source value */
+  RCC_CRSInitStruct.Source = RCC_CRS_SYNC_SOURCE_USB1;
+
+  /* HSI48 is synchronized with USB SOF at 1KHz rate */
+  RCC_CRSInitStruct.ReloadValue =  RCC_CRS_RELOADVALUE_DEFAULT;
+  RCC_CRSInitStruct.ErrorLimitValue = RCC_CRS_ERRORLIMIT_DEFAULT;
+  RCC_CRSInitStruct.Polarity = RCC_CRS_SYNC_POLARITY_RISING;
+
+  /* Set the TRIM[5:0] to the default value */
+  RCC_CRSInitStruct.HSI48CalibrationValue = RCC_CRS_HSI48CALIBRATION_DEFAULT;
+
+  /* Start automatic synchronization */
+  HAL_RCCEx_CRSConfig(&RCC_CRSInitStruct);
 }
