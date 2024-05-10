@@ -3,12 +3,11 @@
 #include "stm32h7xx_hal.h"
 
 uint64_t packBytes(std::span<uint8_t> bytes) {
-    uint64_t temp;
-    for (int i = 8; i > 0; --i) {
+    uint64_t temp = 0;
+    for (int i = 7; i >= 0; --i) {
         temp = (temp << 8) | bytes[i];
     }
     return temp;
-
 }
 
 void write_flash_sector(std::span<uint8_t> flashPageData, std::span<const FlashSector> flashSectors, uint32_t currentPage)
@@ -52,10 +51,10 @@ void write_flash_sector(std::span<uint8_t> flashPageData, std::span<const FlashS
         }
 
         uint64_t word[] = {
-            packBytes(flashPageData.subspan(0, 8)),
-            packBytes(flashPageData.subspan(8, 8)),
-            packBytes(flashPageData.subspan(16, 8)),
-            packBytes(flashPageData.subspan(24, 8))
+            packBytes(flashPageData.subspan(i + 0, 8)),
+            packBytes(flashPageData.subspan(i + 8, 8)),
+            packBytes(flashPageData.subspan(i + 16, 8)),
+            packBytes(flashPageData.subspan(i + 24, 8))
         };
 
         HAL_FLASH_Program(FLASH_TYPEPROGRAM_FLASHWORD, pageAddress + i, (uint32_t)word);
