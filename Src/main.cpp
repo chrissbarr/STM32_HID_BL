@@ -12,6 +12,8 @@ constexpr uint16_t HID_RX_SIZE = 64;
 uint8_t USB_RX_Buffer[HID_RX_SIZE];
 volatile uint8_t new_data_is_received = false;
 
+constexpr int bootloaderPreBootWait = 5000;
+
 /* Buffer FW received from USB is loaded into */
 std::array<uint8_t, 1024> flashPageData;
 /* Current write position in pageData */
@@ -25,6 +27,8 @@ constexpr uint32_t appFlashOffset = FlashSectors[bootloaderFlashSectors].start -
 constexpr uint32_t appFlashStart = FlashSectors[0].start + appFlashOffset;
 /* Current write position in Flash (in units of flashPageSize) */
 uint32_t currentFlashPage = 0;
+
+bool anyCommandsReceived = false;
 
 static uint8_t HIDCommandSig[7] = {'B', 'T', 'L', 'D', 'C', 'M', 'D'};
 
@@ -40,6 +44,7 @@ enum class HIDCommand : uint8_t
 void GPIO_Init();
 void set_LED(bool on);
 void Start_User_Application();
+bool Boot_Pin_Set();
 
 int main(void)
 {
@@ -53,22 +58,22 @@ int main(void)
         RTCClearMagicValue();
         startBootloader = true;
     }
-    if (HAL_GPIO_ReadPin(BOOT1_PORT, BOOT1_PIN) == BOOT1_ACTIVEHIGH)
+
+    if (Boot_Pin_Set())
     {
         startBootloader = true;
     }
 
-    if (!startBootloader)
-    {
+    if (startBootloader && bootloaderPreBootWait == 0) {
         Start_User_Application();
     }
 
     for (int i = 0; i < 5; i++)
     {
         set_LED(true);
-        HAL_Delay(500);
+        HAL_Delay(50);
         set_LED(false);
-        HAL_Delay(500);
+        HAL_Delay(50);
     }
 
     USB_Init();
@@ -78,6 +83,7 @@ int main(void)
         if (new_data_is_received == 1)
         {
             new_data_is_received = 0;
+            anyCommandsReceived = true;
 
             /* If data received is command, process command */
             if (memcmp(USB_RX_Buffer, HIDCommandSig, sizeof(HIDCommandSig)) == 0)
@@ -143,19 +149,29 @@ int main(void)
                 }
             }
         }
+
+        if (!startBootloader && !anyCommandsReceived && HAL_GetTick() > bootloaderPreBootWait)
+        {
+            set_LED(true);
+            HAL_Delay(50);
+            set_LED(false);
+            HAL_Delay(50);
+            Start_User_Application();
+        }
     }
 }
 
 void Start_User_Application()
 {
-    // todo
+    HAL_DeInit();
+
     typedef void (*pFunction)(void);
     pFunction Jump_To_Application;
     uint32_t JumpAddress;
 
-    JumpAddress = *(__IO uint32_t*) (appFlashStart + 4);
-    Jump_To_Application = (pFunction) JumpAddress;
-    __set_MSP(*(uint32_t *) (appFlashStart));
+    JumpAddress = *(__IO uint32_t *)(appFlashStart + 4);
+    Jump_To_Application = (pFunction)JumpAddress;
+    __set_MSP(*(uint32_t *)(appFlashStart));
     Jump_To_Application();
 }
 
@@ -173,6 +189,15 @@ void GPIO_Init()
 void set_LED(bool on)
 {
     HAL_GPIO_WritePin(LED_PORT, LED_PIN, on == LED_ACTIVEHIGH ? GPIO_PIN_SET : GPIO_PIN_RESET);
+}
+
+bool Boot_Pin_Set()
+{
+    bool set = false;
+#ifdef BOOT1_PIN
+    set = HAL_GPIO_ReadPin(BOOT1_PORT, BOOT1_PIN) == BOOT1_ACTIVEHIGH;
+#endif
+    return set;
 }
 
 extern "C" void Error_Handler(void)
