@@ -2,7 +2,7 @@
 
 #include "stm32h7xx_hal.h"
 
-uint64_t packBytes(std::span<uint8_t> bytes) {
+uint64_t Pack_Flash_Word(std::span<uint8_t> bytes) {
     uint64_t temp = 0;
     for (int i = 7; i >= 0; --i) {
         temp = (temp << 8) | bytes[i];
@@ -10,7 +10,7 @@ uint64_t packBytes(std::span<uint8_t> bytes) {
     return temp;
 }
 
-void write_flash_sector(std::span<uint8_t> flashPageData, std::span<const FlashSector> flashSectors, uint32_t currentPage)
+void Write_Flash_Sector(std::span<uint8_t> flashPageData, std::span<const FlashSector> flashSectors, uint32_t currentPage)
 {
     uint32_t appFlashStart = flashSectors[1].start;
     /* Address in flash memory that the page we are writing will start from */
@@ -51,10 +51,10 @@ void write_flash_sector(std::span<uint8_t> flashPageData, std::span<const FlashS
         }
 
         uint64_t word[] = {
-            packBytes(flashPageData.subspan(i + 0, 8)),
-            packBytes(flashPageData.subspan(i + 8, 8)),
-            packBytes(flashPageData.subspan(i + 16, 8)),
-            packBytes(flashPageData.subspan(i + 24, 8))
+            Pack_Flash_Word(flashPageData.subspan(i + 0, 8)),
+            Pack_Flash_Word(flashPageData.subspan(i + 8, 8)),
+            Pack_Flash_Word(flashPageData.subspan(i + 16, 8)),
+            Pack_Flash_Word(flashPageData.subspan(i + 24, 8))
         };
 
         HAL_FLASH_Program(FLASH_TYPEPROGRAM_FLASHWORD, pageAddress + i, (uint32_t)word);

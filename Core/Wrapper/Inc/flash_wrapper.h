@@ -4,4 +4,4 @@
 
 #include <span>
 
-void write_flash_sector(std::span<uint8_t> pageData, std::span<const FlashSector> flashSectors, uint32_t currentPage);
+void Write_Flash_Sector(std::span<uint8_t> pageData, std::span<const FlashSector> flashSectors, uint32_t currentPage);

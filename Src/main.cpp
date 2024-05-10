@@ -42,7 +42,7 @@ enum class HIDCommand : uint8_t {
 
 /* Internal function declarations */
 void GPIO_Init();
-void set_LED(bool on);
+void Set_LED(bool on);
 void Start_User_Application();
 bool Boot_Pin_Set();
 
@@ -52,8 +52,8 @@ int main(void) {
     GPIO_Init();
 
     bool startBootloader = false;
-    if (RTCMagicValueSet()) {
-        RTCClearMagicValue();
+    if (RTC_Magic_Value_Set()) {
+        RTC_Clear_Magic_Value();
         startBootloader = true;
     }
 
@@ -62,9 +62,9 @@ int main(void) {
     if (startBootloader && bootloaderPreBootWait == 0) { Start_User_Application(); }
 
     for (int i = 0; i < 5; i++) {
-        set_LED(true);
+        Set_LED(true);
         HAL_Delay(50);
-        set_LED(false);
+        Set_LED(false);
         HAL_Delay(50);
     }
 
@@ -89,15 +89,15 @@ int main(void) {
                 }
                 case HIDCommand::ResetMCU: {
                     /* Flush any leftover data in the buffer */
-                    if (pageOffset > 0) { write_flash_sector(flashPageData, FlashSectors, currentFlashPage); }
+                    if (pageOffset > 0) { Write_Flash_Sector(flashPageData, FlashSectors, currentFlashPage); }
                     HAL_Delay(100);
                     HAL_NVIC_SystemReset();
                     break;
                 }
                 case HIDCommand::LEDFlash: {
-                    set_LED(true);
+                    Set_LED(true);
                     HAL_Delay(500);
-                    set_LED(false);
+                    Set_LED(false);
                     break;
                 }
                 default: {
@@ -112,9 +112,9 @@ int main(void) {
 
                 /* If buffer is full, write FW out to flash */
                 if (pageOffset == flashPageData.size()) {
-                    set_LED(true);
-                    write_flash_sector(flashPageData, FlashSectors, currentFlashPage);
-                    set_LED(false);
+                    Set_LED(true);
+                    Write_Flash_Sector(flashPageData, FlashSectors, currentFlashPage);
+                    Set_LED(false);
                     currentFlashPage++;
 
                     /* Reset buffer */
@@ -129,9 +129,9 @@ int main(void) {
         }
 
         if (!startBootloader && !anyCommandsReceived && HAL_GetTick() > bootloaderPreBootWait) {
-            set_LED(true);
+            Set_LED(true);
             HAL_Delay(50);
-            set_LED(false);
+            Set_LED(false);
             HAL_Delay(50);
             Start_User_Application();
         }
@@ -161,7 +161,7 @@ void GPIO_Init() {
     HAL_GPIO_Init(LED_PORT, &GPIO_InitStruct);
 }
 
-void set_LED(bool on) {
+void Set_LED(bool on) {
     HAL_GPIO_WritePin(LED_PORT, LED_PIN, on == LED_ACTIVEHIGH ? GPIO_PIN_SET : GPIO_PIN_RESET);
 }
 

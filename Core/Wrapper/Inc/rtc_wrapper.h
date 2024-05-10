@@ -1,5 +1,5 @@
 #pragma once
 
-bool RTCMagicValueSet();
+bool RTC_Magic_Value_Set();
 
-void RTCClearMagicValue();
+void RTC_Clear_Magic_Value();

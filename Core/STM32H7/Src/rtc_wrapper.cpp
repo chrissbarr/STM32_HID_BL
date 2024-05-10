@@ -6,13 +6,13 @@
 constexpr int MagicValue = 0x424C;
 constexpr uint32_t MagicValueRTCRegister = LL_RTC_BKP_DR4;
 
-bool RTCMagicValueSet()
+bool RTC_Magic_Value_Set()
 {
     int regValue = LL_RTC_BAK_GetRegister(RTC, MagicValueRTCRegister);
     return (regValue == MagicValue);
 }
 
-void RTCClearMagicValue()
+void RTC_Clear_Magic_Value()
 {
     LL_PWR_EnableBkUpAccess();
     LL_RTC_BAK_SetRegister(RTC, MagicValueRTCRegister, 0);

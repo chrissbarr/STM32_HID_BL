@@ -2,7 +2,7 @@
 
 #include "stm32f4xx_hal.h"
 
-void write_flash_sector(std::span<uint8_t> flashPageData, std::span<const FlashSector> flashSectors, uint32_t currentPage)
+void Write_Flash_Sector(std::span<uint8_t> flashPageData, std::span<const FlashSector> flashSectors, uint32_t currentPage)
 {
     uint32_t appFlashStart = flashSectors[1].start;
     /* Address in flash memory that the page we are writing will start from */
