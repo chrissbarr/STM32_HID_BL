@@ -59,7 +59,7 @@ int main(void) {
 
     if (Boot_Pin_Set()) { startBootloader = true; }
 
-    if (startBootloader && bootloaderPreBootWait == 0) { Start_User_Application(); }
+    if (!startBootloader && bootloaderPreBootWait == 0) { Start_User_Application(); }
 
     for (int i = 0; i < 5; i++) {
         Set_LED(true);
@@ -152,13 +152,28 @@ void Start_User_Application() {
 }
 
 void GPIO_Init() {
-    /* Configure LED */
     GPIO_InitTypeDef GPIO_InitStruct;
+
+    /* Configure LED */
     GPIO_InitStruct.Pin = LED_PIN;
     GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
     HAL_GPIO_Init(LED_PORT, &GPIO_InitStruct);
+
+    /* Configure BOOT1 Input */
+    #ifdef BOOT1_PIN
+        GPIO_InitStruct.Pin = BOOT1_PIN;
+        GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+        /* Configure pull up/down resistor to counter button active state */
+        if (BOOT1_ACTIVEHIGH) {
+            GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+        } else {
+            GPIO_InitStruct.Pull = GPIO_PULLUP;
+        }
+        GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+        HAL_GPIO_Init(BOOT1_PORT, &GPIO_InitStruct);
+    #endif
 }
 
 void Set_LED(bool on) {
