@@ -1,9 +1,15 @@
 #include "main.h"
 #include "variant.h"
 
+// #define SD_CS_Pin GPIO_PIN_4
+// #define SD_CS_GPIO_Port GPIOE
+// #define SD_SPI_HANDLE hspi4
+
 #include "flash_wrapper.h"
 #include "rtc_wrapper.h"
 #include "usb_wrapper.h"
+#include "fatfs.h"
+#include "sd_wrapper.h"
 
 #include <array>
 #include <cstring>
@@ -13,6 +19,8 @@ uint8_t USB_RX_Buffer[HID_RX_SIZE];
 volatile uint8_t new_data_is_received = false;
 
 constexpr int bootloaderPreBootWait = 5000;
+
+
 
 /* Buffer FW received from USB is loaded into */
 std::array<uint8_t, 1024> flashPageData;
@@ -50,6 +58,12 @@ int main(void) {
     HAL_Init();
     SystemClock_Config();
     GPIO_Init();
+
+
+
+    #ifdef SD_ENABLED
+        Initialise_SD();
+    #endif
 
     bool startBootloader = false;
     if (RTC_Magic_Value_Set()) {
@@ -174,7 +188,15 @@ void GPIO_Init() {
         GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
         HAL_GPIO_Init(BOOT1_PORT, &GPIO_InitStruct);
     #endif
+
+    HAL_GPIO_WritePin(SD_CS_GPIO_Port, SD_CS_Pin, GPIO_PIN_RESET);
+    GPIO_InitStruct.Pin = SD_CS_Pin;
+    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+    HAL_GPIO_Init(SD_CS_GPIO_Port, &GPIO_InitStruct);
 }
+
 
 void Set_LED(bool on) {
     HAL_GPIO_WritePin(LED_PORT, LED_PIN, on == LED_ACTIVEHIGH ? GPIO_PIN_SET : GPIO_PIN_RESET);

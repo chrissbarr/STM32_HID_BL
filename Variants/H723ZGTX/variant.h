@@ -19,6 +19,15 @@ extern "C" void SystemClock_Config(void);
 #define LED_PORT GPIOG
 #define LED_ACTIVEHIGH false
 
+#define SD_ENABLED
+
+// CS = DAT3 = PC11
+// DI = CMD = PD2
+// SCLK = CLK = PC12
+// DO = DATA0 = PC8
+// #define SD_CS_Pin GPIO_PIN_4
+// #define SD_CS_GPIO_Port GPIOE
+
 constexpr std::array<FlashSector, 8> FlashSectors{{
     {0x08000000, 0x20000},
     {0x08020000, 0x20000},

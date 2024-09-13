@@ -1,5 +1,6 @@
 set(SOURCES
 Src/flash_wrapper.cpp
+Src/sd_wrapper.cpp
 Src/system_stm32h7xx.c
 Src/stm32h7xx_hal_msp.c
 Src/stm32h7xx_it.c
@@ -10,6 +11,13 @@ Src/usb_wrapper.c
 Src/rtc_wrapper.cpp
 Src/usbd_custom_hid_if.c
 Src/usbd_desc.c
+Src/FatFs/fatfs.c
+Src/FatFs/fatfs.h
+Src/FatFs/ffconf.h
+Src/FatFs/user_diskio_spi.c
+Src/FatFs/user_diskio_spi.h
+Src/FatFs/user_diskio.c
+Src/FatFs/user_diskio.h
 Inc/stm32h7xx_it.h
 Inc/stm32h7xx_hal_conf.h
 Inc/usb_device.h
@@ -19,6 +27,7 @@ Inc/usbd_desc.h
 )
 target_sources(${EXECUTABLE} PRIVATE ${SOURCES})
 target_include_directories(${EXECUTABLE} PRIVATE Inc)
+target_include_directories(${EXECUTABLE} PRIVATE Src/FatFs)
 
 set(CPU_PARAMETERS ${CPU_PARAMETERS}
     -mthumb
@@ -388,3 +397,19 @@ target_sources(${EXECUTABLE} PRIVATE ${SOURCES})
 target_include_directories(${EXECUTABLE} PUBLIC ${PROJ_PATH}/Drivers/STM32CubeH7/Middlewares/ST/STM32_USB_Device_Library/Class/CustomHID/Inc/)
 
 target_sources(${EXECUTABLE} PRIVATE "${PROJ_PATH}/Drivers/STM32CubeH7/Drivers/CMSIS/Device/ST/STM32H7xx/Source/Templates/gcc/${stm32_startup_file}")
+
+# FatFs Middleware
+# find Drivers/STM32CubeH7/Middlewares/Third_Party/FatFs/ -type f
+set(SOURCES
+Drivers/STM32CubeH7/Middlewares/Third_Party/FatFs/src/option/syscall.c
+Drivers/STM32CubeH7/Middlewares/Third_Party/FatFs/src/diskio.c
+Drivers/STM32CubeH7/Middlewares/Third_Party/FatFs/src/diskio.h
+Drivers/STM32CubeH7/Middlewares/Third_Party/FatFs/src/ff_gen_drv.c
+Drivers/STM32CubeH7/Middlewares/Third_Party/FatFs/src/ff_gen_drv.h
+Drivers/STM32CubeH7/Middlewares/Third_Party/FatFs/src/ff.c
+Drivers/STM32CubeH7/Middlewares/Third_Party/FatFs/src/ff.h
+Drivers/STM32CubeH7/Middlewares/Third_Party/FatFs/src/integer.h
+)
+list(TRANSFORM SOURCES PREPEND "${PROJ_PATH}/")
+target_sources(${EXECUTABLE} PRIVATE ${SOURCES})
+target_include_directories(${EXECUTABLE} PUBLIC ${PROJ_PATH}/Drivers/STM32CubeH7/Middlewares/Third_Party/FatFs/src)

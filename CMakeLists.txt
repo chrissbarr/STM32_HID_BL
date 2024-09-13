@@ -26,7 +26,8 @@ Src/variantChecks.cpp
 add_executable(${EXECUTABLE} ${SOURCES})
 target_include_directories(${EXECUTABLE} PRIVATE Inc)
 
-set(VARIANT "F401CEUX" CACHE STRING "Variant")
+set(VARIANT "H723ZGTX" CACHE STRING "Variant")
+#set(VARIANT "F446VETX" CACHE STRING "Variant")
 set(VARIANT_DIR "${PROJ_PATH}/Variants/${VARIANT}")
 if(EXISTS ${VARIANT_DIR})
     message(STATUS "Configure for variant: ${VARIANT} - ${VARIANT_DIR}")
