@@ -4,4 +4,4 @@
 
 #include <span>
 
-bool Initialise_SD(std::span<const FlashSector> flashSectors);
+bool attempt_install_from_Sd(std::span<const FlashSector> flashSectors);

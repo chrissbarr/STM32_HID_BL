@@ -62,7 +62,9 @@ int main(void) {
 
 
     #ifdef SD_ENABLED
-        Initialise_SD(FlashSectors);
+    if (attempt_install_from_Sd(FlashSectors)) {
+        Start_User_Application();
+    }
     #endif
 
     bool startBootloader = false;
