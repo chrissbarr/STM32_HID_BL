@@ -62,7 +62,7 @@ int main(void) {
 
 
     #ifdef SD_ENABLED
-        Initialise_SD();
+        Initialise_SD(FlashSectors);
     #endif
 
     bool startBootloader = false;

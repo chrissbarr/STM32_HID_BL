@@ -1,29 +1,35 @@
 set(SOURCES
-Src/flash_wrapper.cpp
-Src/sd_wrapper.cpp
-Src/system_stm32h7xx.c
-Src/stm32h7xx_hal_msp.c
-Src/stm32h7xx_it.c
-Src/syscalls.c
-Src/usb_device.c
-Src/usbd_conf.c
-Src/usb_wrapper.c
-Src/rtc_wrapper.cpp
-Src/usbd_custom_hid_if.c
-Src/usbd_desc.c
-Src/FatFs/fatfs.c
-Src/FatFs/fatfs.h
-Src/FatFs/ffconf.h
-Src/FatFs/user_diskio_spi.c
-Src/FatFs/user_diskio_spi.h
-Src/FatFs/user_diskio.c
-Src/FatFs/user_diskio.h
-Inc/stm32h7xx_it.h
 Inc/stm32h7xx_hal_conf.h
+Inc/stm32h7xx_it.h
 Inc/usb_device.h
 Inc/usbd_conf.h
 Inc/usbd_custom_hid_if.h
 Inc/usbd_desc.h
+Src/FatFs/diskio.c
+Src/FatFs/fatfs.c
+Src/FatFs/fatfs.h
+Src/FatFs/ff_gen_drv.c
+Src/FatFs/ff.c
+Src/FatFs/ff.h
+Src/FatFs/ffconf.h
+Src/FatFs/ffsystem.c
+Src/FatFs/ffunicode.c
+Src/FatFs/user_diskio_spi.c
+Src/FatFs/user_diskio_spi.h
+Src/FatFs/user_diskio.c
+Src/FatFs/user_diskio.h
+Src/flash_wrapper.cpp
+Src/rtc_wrapper.cpp
+Src/sd_wrapper.cpp
+Src/stm32h7xx_hal_msp.c
+Src/stm32h7xx_it.c
+Src/syscalls.c
+Src/system_stm32h7xx.c
+Src/usb_device.c
+Src/usb_wrapper.c
+Src/usbd_conf.c
+Src/usbd_custom_hid_if.c
+Src/usbd_desc.c
 )
 target_sources(${EXECUTABLE} PRIVATE ${SOURCES})
 target_include_directories(${EXECUTABLE} PRIVATE Inc)
@@ -400,16 +406,16 @@ target_sources(${EXECUTABLE} PRIVATE "${PROJ_PATH}/Drivers/STM32CubeH7/Drivers/C
 
 # FatFs Middleware
 # find Drivers/STM32CubeH7/Middlewares/Third_Party/FatFs/ -type f
-set(SOURCES
-Drivers/STM32CubeH7/Middlewares/Third_Party/FatFs/src/option/syscall.c
-Drivers/STM32CubeH7/Middlewares/Third_Party/FatFs/src/diskio.c
-Drivers/STM32CubeH7/Middlewares/Third_Party/FatFs/src/diskio.h
-Drivers/STM32CubeH7/Middlewares/Third_Party/FatFs/src/ff_gen_drv.c
-Drivers/STM32CubeH7/Middlewares/Third_Party/FatFs/src/ff_gen_drv.h
-Drivers/STM32CubeH7/Middlewares/Third_Party/FatFs/src/ff.c
-Drivers/STM32CubeH7/Middlewares/Third_Party/FatFs/src/ff.h
-Drivers/STM32CubeH7/Middlewares/Third_Party/FatFs/src/integer.h
-)
-list(TRANSFORM SOURCES PREPEND "${PROJ_PATH}/")
-target_sources(${EXECUTABLE} PRIVATE ${SOURCES})
-target_include_directories(${EXECUTABLE} PUBLIC ${PROJ_PATH}/Drivers/STM32CubeH7/Middlewares/Third_Party/FatFs/src)
+# set(SOURCES
+# Drivers/STM32CubeH7/Middlewares/Third_Party/FatFs/src/option/syscall.c
+# Drivers/STM32CubeH7/Middlewares/Third_Party/FatFs/src/diskio.c
+# Drivers/STM32CubeH7/Middlewares/Third_Party/FatFs/src/diskio.h
+# Drivers/STM32CubeH7/Middlewares/Third_Party/FatFs/src/ff_gen_drv.c
+# Drivers/STM32CubeH7/Middlewares/Third_Party/FatFs/src/ff_gen_drv.h
+# Drivers/STM32CubeH7/Middlewares/Third_Party/FatFs/src/ff.c
+# Drivers/STM32CubeH7/Middlewares/Third_Party/FatFs/src/ff.h
+# Drivers/STM32CubeH7/Middlewares/Third_Party/FatFs/src/integer.h
+# )
+# list(TRANSFORM SOURCES PREPEND "${PROJ_PATH}/")
+# target_sources(${EXECUTABLE} PRIVATE ${SOURCES})
+# target_include_directories(${EXECUTABLE} PUBLIC ${PROJ_PATH}/Drivers/STM32CubeH7/Middlewares/Third_Party/FatFs/src)

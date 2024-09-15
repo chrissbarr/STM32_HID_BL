@@ -1,3 +1,7 @@
 #pragma once
 
-bool Initialise_SD();
+#include "flash.h"
+
+#include <span>
+
+bool Initialise_SD(std::span<const FlashSector> flashSectors);

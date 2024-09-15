@@ -1,8 +1,10 @@
 #include "sd_wrapper.h"
+#include "flash_wrapper.h"
 #include "main.h"
 #include "fatfs.h"
 
 #include <array>
+#include <cstdint>
 
 #include "stm32h7xx_hal.h"
 
@@ -42,8 +44,42 @@ void MX_SPI4_Init(void)
 
 }
 
+uint32_t crc32iso_hdlc_bit(uint32_t crc, uint8_t const *mem, size_t len) {
+    unsigned char const *data = mem;
+    if (data == NULL)
+        return 0;
+    crc = ~crc;
+    for (size_t i = 0; i < len; i++) {
+        crc ^= data[i];
+        for (unsigned k = 0; k < 8; k++) {
+            crc = crc & 1 ? (crc >> 1) ^ 0xedb88320 : crc >> 1;
+        }
+    }
+    crc = ~crc;
+    return crc;
+}
 
-bool Initialise_SD() {
+uint32_t uint32_from_uint8(uint8_t* buffer)
+{
+    uint32_t val = 0;
+    val |= buffer[0] << 0;
+    val |= buffer[1] << 8;
+    val |= buffer[2] << 16;
+    val |= buffer[3] << 24;
+    return val;
+}
+
+bool Initialise_SD(std::span<const FlashSector> flashSectors) {
+
+    // 1 - Initialise SD card access (if available)
+    //       If yes, continue. If not abort.
+    // 2 - Check if a valid FW update file is available.
+    //       Valid means:
+    //         Signed as expected
+    //         CRC matches
+    //         Size will fit in available flash space
+    //       If yes, continue. If not abort.
+    // 3 - Dump the currently flashed FW to a backup file on the SD card.
 
     MX_SPI4_Init();
     MX_FATFS_Init();
@@ -58,59 +94,170 @@ bool Initialise_SD() {
     }
 
     // Check for a FW update file
-    static const char filename[] = "h7_fw_update.bin";
+    static const char filename[] = "sd_fw.bin"; // sd_fw_nosig
     FIL file;
     fres = f_open(&file, filename, FA_READ);
     if (fres != FR_OK) {
         return false;
     }
 
+    // Read signature from first 4 bytes
+    std::array<uint8_t, 4> sigBuf;
+    UINT bytes_read;
+    fres = f_read(&file, sigBuf.data(), sigBuf.size(), &bytes_read);
+    if (fres != FR_OK) {
+        return false;
+    }
+    if (bytes_read != sigBuf.size()) {
+        return false;
+    }
+    // Check signature matches expected
+    constexpr std::array<uint8_t, 4> sig_expected = {0xAA, 0x3D, 0x00, 0x01};
+    for (std::size_t i = 0; i < sig_expected.size(); i++) {
+        if (sig_expected[i] != sigBuf[i]) {
+            return false;
+        }
+    }
+
+    // Read CRC32 from next 4 bytes
+    std::array<uint8_t, 4> crcBuf;
+    fres = f_read(&file, crcBuf.data(), crcBuf.size(), &bytes_read);
+    if (fres != FR_OK) {
+        return false;
+    }
+    if (bytes_read != crcBuf.size()) {
+        return false;
+    }
+    uint32_t crc32_expected = uint32_from_uint8(crcBuf.data());
+
+    // Calculate CRC32 for bin file fw content
     std::array<uint8_t, 1024> flashPageData;
-    int size_bytes = 0;
+    uint32_t fw_size_bytes = 0;
+    uint32_t crc32_calculated = 0;
+
+    // Offset from start of FW file to start of actual FW
+    // (Accounting for prefixed CRC etc.)
+    // We will need to seek to this point again after calculating CRC
+    constexpr uint32_t fw_start_offset = 8;
+    fres = f_lseek(&file, fw_start_offset);
+    if (fres != FR_OK) {
+        return false;
+    }
 
     bool done = false;
     while (!done) {
         UINT bytes_to_read = flashPageData.size();
-        UINT bytes_read;
+
         flashPageData.fill(0);
         fres = f_read(&file, flashPageData.data(), bytes_to_read, &bytes_read);
         if (fres != FR_OK) {
             return false;
         }
 
-        size_bytes += bytes_read;
+        fw_size_bytes += bytes_read;
+        crc32_calculated = crc32iso_hdlc_bit(crc32_calculated, flashPageData.data(), bytes_read);
 
         if (bytes_read < bytes_to_read) {
             done = true;
         }
     }
 
-    // //Let's get some statistics from the SD card
-    // DWORD free_clusters, free_sectors, total_sectors;
+    // Check CRC32 matches expected
+    if (crc32_calculated != crc32_expected) {
+        return false;
+    }
 
-    // FATFS* getFreeFs;
+    // Check FW will fit in available flash
+    // Calculate available flash in bytes
+    uint32_t flash_available_bytes = 0;
+    for (std::size_t i = 0; i < flashSectors.size(); i++) {
+        // First sector is for bootloader
+        // This is assumed and should be properly configured somewhere
+        if (i == 0) { continue; }
+        flash_available_bytes += flashSectors[i].size;
+    }
+    if (fw_size_bytes > flash_available_bytes) {
+        return false;
+    }
 
-    // fres = f_getfree("", &free_clusters, &getFreeFs);
-    // if (fres != FR_OK) {
-    //     //myprintf("f_getfree error (%i)\r\n", fres);
-    //     while(1);
-    // }
+    // FW has passed all checks. Write FW to flash.
 
-    // //Formula comes from ChaN's documentation
-    // total_sectors = (getFreeFs->n_fatent - 2) * getFreeFs->csize;
-    // free_sectors = free_clusters * getFreeFs->csize;
+    // Create backup file of currently flashed firmware.
+    FIL backup_fw_file;
+    static const char backup_fw_filename[] = "firmware_backup.bin";
+    fres = f_open(&backup_fw_file, backup_fw_filename, FA_CREATE_ALWAYS | FA_WRITE);
+    if (fres != FR_OK) {
+        return false;
+    }
+    UINT bytes_written;
+    fres = f_write(&backup_fw_file, (uint8_t*)flashSectors[1].start, flash_available_bytes, &bytes_written);
+    if (fres != FR_OK) {
+        return false;
+    }
+    fres = f_close(&backup_fw_file);
+    if (fres != FR_OK) {
+        return false;
+    }
 
-    // //myprintf("SD card stats:\r\n%10lu KiB total drive space.\r\n%10lu KiB available.\r\n", total_sectors / 2, free_sectors / 2);
+    auto program_flash_from_file = [&]() {
 
-    // //Now let's try to open file "test.txt"
-    // fres = f_open(&fil, "test.txt", FA_READ);
-    // if (fres != FR_OK) {
-    //     //myprintf("f_open error (%i)\r\n");
-    //     while(1);
-    // }
-    // //myprintf("I was able to open 'test.txt' for reading!\r\n");
+        // Return to start of FW
+        FRESULT fres = f_lseek(&file, fw_start_offset);
+        if (fres != FR_OK) {
+            return false;
+        }
 
-    //
+        uint32_t currentFlashPage = 0;
+        done = false;
+        while (!done) {
+            // Read FW from file into buffer
+            UINT bytes_to_read = flashPageData.size();
+            flashPageData.fill(0);
+            fres = f_read(&file, flashPageData.data(), bytes_to_read, &bytes_read);
+            if (fres != FR_OK) {
+                return false;
+            }
+
+            // Write buffer to next location in flash
+            Write_Flash_Sector(flashPageData, flashSectors, currentFlashPage);
+            currentFlashPage += 1;
+
+            if (bytes_read < bytes_to_read) {
+                done = true;
+            }
+        }
+
+        return true;
+
+    };
+
+    if (!program_flash_from_file()) {
+        // uh oh, writing to flash has failed for some reason
+        // we are in an invalid state and need to recover somehow?
+        return false;
+    }
+
+
+    // Read flash contents and calculate CRC32.
+    auto calculate_flash_crc = [&]() {
+        uint32_t crc_flash_calculated = 0;
+        // Assumes flash sectors are contiguous and also byte ordering / alignment. Should handle explicitly.
+        crc_flash_calculated = crc32iso_hdlc_bit(crc_flash_calculated, (uint8_t*)flashSectors[1].start, fw_size_bytes);
+        return crc_flash_calculated;
+    };
+
+    uint32_t crc_flash_calculated = calculate_flash_crc();
+    if (crc_flash_calculated != crc32_expected) {
+        // uh oh, flash contents don't match expected!
+        // we'll try flashing again and recheck
+        program_flash_from_file();
+        crc_flash_calculated = calculate_flash_crc();
+        if (crc_flash_calculated != crc32_expected) {
+            // okay, doesn't seem we can fix this
+            // need to restore to a safe state
+        }
+    }
+
 
     return true;
 
