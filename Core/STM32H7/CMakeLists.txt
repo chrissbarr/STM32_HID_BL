@@ -24,6 +24,7 @@ Src/sd_wrapper.cpp
 Src/stm32h7xx_hal_msp.c
 Src/stm32h7xx_it.c
 Src/syscalls.c
+Src/sysmem.c
 Src/system_stm32h7xx.c
 Src/usb_device.c
 Src/usb_wrapper.c

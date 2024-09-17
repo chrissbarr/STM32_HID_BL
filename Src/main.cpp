@@ -54,10 +54,21 @@ void Set_LED(bool on);
 void Start_User_Application();
 bool Boot_Pin_Set();
 
+void Blink_LED(int times, int milliseconds) {
+    for (int i = 0; i < times; i++) {
+        Set_LED(true);
+        HAL_Delay(milliseconds);
+        Set_LED(false);
+        HAL_Delay(milliseconds);
+    }
+}
+
 int main(void) {
     HAL_Init();
     SystemClock_Config();
     GPIO_Init();
+
+    Blink_LED(1, 500);
 
 
 
