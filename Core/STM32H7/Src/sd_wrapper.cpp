@@ -45,21 +45,6 @@ void MX_SPI4_Init(void)
 
 }
 
-uint32_t crc32iso_hdlc_bit(uint32_t crc, uint8_t const *mem, size_t len) {
-    unsigned char const *data = mem;
-    if (data == NULL)
-        return 0;
-    crc = ~crc;
-    for (size_t i = 0; i < len; i++) {
-        crc ^= data[i];
-        for (unsigned k = 0; k < 8; k++) {
-            crc = crc & 1 ? (crc >> 1) ^ 0xedb88320 : crc >> 1;
-        }
-    }
-    crc = ~crc;
-    return crc;
-}
-
 const uint32_t crc32lookup[256] = {
     0x00000000,0x77073096,0xEE0E612C,0x990951BA,0x076DC419,0x706AF48F,0xE963A535,0x9E6495A3,
     0x0EDB8832,0x79DCB8A4,0xE0D5E91E,0x97D2D988,0x09B64C2B,0x7EB17CBD,0xE7B82D07,0x90BF1D91,
@@ -95,7 +80,7 @@ const uint32_t crc32lookup[256] = {
     0xB3667A2E,0xC4614AB8,0x5D681B02,0x2A6F2B94,0xB40BBE37,0xC30C8EA1,0x5A05DF1B,0x2D02EF8D,
   };
 
-uint32_t crc32_1byte(uint32_t prev_crc, uint8_t const *mem, size_t len)
+uint32_t calculate_crc32(uint32_t prev_crc, uint8_t const *mem, size_t len)
 {
   uint32_t crc = ~prev_crc;
   unsigned char* current = (unsigned char*) mem;
@@ -103,64 +88,6 @@ uint32_t crc32_1byte(uint32_t prev_crc, uint8_t const *mem, size_t len)
   while (length--)
     crc = (crc >> 8) ^ crc32lookup[(crc & 0xFF) ^ *current++];
   return ~crc;
-}
-
-uint32_t crc32_hw(uint32_t crc, uint8_t const *mem, size_t len) {
-
-    // CRC_HandleTypeDef   CrcHandle;
-    // CrcHandle.Instance = CRC;
-
-    // /* The default polynomial is used */
-    // CrcHandle.Init.DefaultPolynomialUse    = DEFAULT_POLYNOMIAL_ENABLE;
-    // // CrcHandle.Init.DefaultPolynomialUse    = DEFAULT_POLYNOMIAL_DISABLE;
-    // // CrcHandle.Init.GeneratingPolynomial = 0xedb88320;
-    // // CrcHandle.Init.CRCLength = CRC_POLYLENGTH_32B;
-
-    // /* The default init value is used */
-    // CrcHandle.Init.DefaultInitValueUse     = DEFAULT_INIT_VALUE_DISABLE;
-    // //CrcHandle.Init.DefaultInitValueUse     = DEFAULT_INIT_VALUE_ENABLE;
-    // CrcHandle.Init.InitValue = ~crc;
-
-    // /* The input data are not inverted */
-    // CrcHandle.Init.InputDataInversionMode  = CRC_INPUTDATA_INVERSION_BYTE;
-
-    // /* The output data are not inverted */
-    // CrcHandle.Init.OutputDataInversionMode = CRC_OUTPUTDATA_INVERSION_ENABLE;
-
-    // /* The input data are 32-bit long words */
-    // CrcHandle.InputDataFormat              = CRC_INPUTDATA_FORMAT_BYTES;
-
-    // if (HAL_CRC_Init(&CrcHandle) != HAL_OK)
-    // {
-    //     /* Initialization Error */
-    //     Error_Handler();
-    // }
-
-    __HAL_RCC_CRC_CLK_ENABLE();
-    CRC->CR = 0;
-    //CRC->CR |= CRC_CR_REV_IN_0;
-    CRC->CR |= CRC_CR_REV_IN_1;
-    CRC->CR |= CRC_CR_REV_OUT;
-    CRC->CR |= CRC_CR_RESET;
-
-    CRC->DR = crc;
-
-    uint32_t i = 0;
-    while (i < len) {
-        CRC->DR = *(uint32_t*)&mem[i];
-        i += 4;
-    }
-
-    uint32_t val = CRC->DR ^ 0xFFFFFFFF;
-    __HAL_RCC_CRC_CLK_DISABLE();
-
-    return val;
-
-
-    //uint32_t uwCRCValue = 0;//HAL_CRC_Calculate(&CrcHandle, (uint32_t *)mem, len);
-    // uwCRCValue = ~uwCRCValue;
-    //return uwCRCValue;
-
 }
 
 uint32_t uint32_from_uint8(uint8_t* buffer)
@@ -174,8 +101,6 @@ uint32_t uint32_from_uint8(uint8_t* buffer)
 }
 
 uint32_t crc32_from_sd_file(const char* filename, uint32_t fw_start_offset) {
-    uint32_t crc_start = HAL_GetTick();
-
     FIL file;
     FRESULT fres;
     fres = f_open(&file, filename, FA_READ);
@@ -190,7 +115,6 @@ uint32_t crc32_from_sd_file(const char* filename, uint32_t fw_start_offset) {
 
     std::array<uint8_t, 1024> file_buffer;
     uint32_t crc32_calculated = 0;
-    uint32_t crc32_calculated_hw = 0;
     UINT bytes_read;
 
     bool done = false;
@@ -203,9 +127,7 @@ uint32_t crc32_from_sd_file(const char* filename, uint32_t fw_start_offset) {
             return false;
         }
 
-        //crc32_calculated = crc32iso_hdlc_bit(crc32_calculated, file_buffer.data(), bytes_read);
-        //crc32_calculated_hw = crc32_hw(crc32_calculated_hw, file_buffer.data(), bytes_read);
-        crc32_calculated = crc32_1byte(crc32_calculated, file_buffer.data(), bytes_read);
+        crc32_calculated = calculate_crc32(crc32_calculated, file_buffer.data(), bytes_read);
 
         if (bytes_read < bytes_to_read) {
             done = true;
@@ -217,23 +139,13 @@ uint32_t crc32_from_sd_file(const char* filename, uint32_t fw_start_offset) {
         return 0;
     }
 
-
-    uint32_t crc_stop = HAL_GetTick();
-    uint32_t crc_duration = crc_stop - crc_start;
-
     return crc32_calculated;
 }
 
 uint32_t crc_from_flash(std::span<const FlashSector> flashSectors, uint32_t size) {
     uint32_t crc_flash_calculated = 0;
     // Assumes flash sectors are contiguous and also byte ordering / alignment. Should handle explicitly.
-    // uint32_t crc_start = HAL_GetTick();
-    // crc_flash_calculated = crc32iso_hdlc_bit(crc_flash_calculated, (uint8_t*)flashSectors.front().start, size);
-    // uint32_t crc_sw_done = HAL_GetTick();
-    crc_flash_calculated = crc32_1byte(crc_flash_calculated, (uint8_t*)flashSectors.front().start, size);
-    // uint32_t crc_sw2_done = HAL_GetTick();
-    // uint32_t sw_duration = crc_sw_done - crc_start;
-    // uint32_t sw2_duration = crc_sw2_done - crc_sw_done;
+    crc_flash_calculated = calculate_crc32(crc_flash_calculated, (uint8_t*)flashSectors.front().start, size);
     return crc_flash_calculated;
 }
 
@@ -281,15 +193,11 @@ Sd_fw_header read_sd_file_header(const char* filename) {
 
     // Close file
     fres = f_close(&file);
-    // if (fres != FR_OK) {
-    //     return header;
-    // }
 
     return header;
 }
 
 bool check_signatures_match(std::span<const uint8_t> signature, std::span<const uint8_t> reference) {
-    //assert(signature.size() == reference.size());
     bool matches = true;
 
     for (std::size_t i = 0; i < signature.size(); i++) {
@@ -310,7 +218,6 @@ uint32_t calculate_available_flash_space_bytes(std::span<const FlashSector> flas
 }
 
 bool write_flash_to_file(const char* filename, std::span<const FlashSector> flashSectors) {
-    uint32_t write_start = HAL_GetTick();
     FIL file;
     FRESULT fres;
     bool success = true;
@@ -329,8 +236,6 @@ bool write_flash_to_file(const char* filename, std::span<const FlashSector> flas
     if (fres != FR_OK) {
         success = false;
     }
-    uint32_t write_end = HAL_GetTick();
-    uint32_t write_duration = write_end - write_start;
     return success;
 }
 
@@ -339,10 +244,7 @@ bool write_flash_to_file_retry(const char* filename, std::span<const FlashSector
     bool success = false;
     int attempts = 0;
 
-    uint32_t crc_start = HAL_GetTick();
     uint32_t flash_crc = crc_from_flash(flashSectors, calculate_available_flash_space_bytes(flashSectors));
-    uint32_t crc_stop = HAL_GetTick();
-    uint32_t crc_duration = crc_stop - crc_start;
 
     while (!success && attempts < max_attempts) {
         // Write flash contents to SD file
@@ -445,67 +347,17 @@ bool create_marker_file(const char* filename) {
     return success;
 }
 
-void log_message(std::string msg) {
+void log_message(std::string msg, bool timestamp = true) {
     FIL file_log;
     std::string log_filename = "sd_fw_log.txt";
     f_open(&file_log, log_filename.c_str(), FA_OPEN_APPEND | FA_WRITE);
-    f_printf(&file_log, "%8u - %s\n", HAL_GetTick(), msg.c_str());
+    if (timestamp) {
+        f_printf(&file_log, "%8u - %s\n", HAL_GetTick(), msg.c_str());
+    } else {
+        f_printf(&file_log, "%s\n", msg.c_str());
+    }
     f_close(&file_log);
 }
-
-
-
-void crc_test() {
-    #define BUFFER_SIZE    114
-    static const uint32_t aDataBuffer[BUFFER_SIZE] =
-    {
-    0x00001021, 0x20423063, 0x408450a5, 0x60c670e7, 0x9129a14a, 0xb16bc18c,
-    0xd1ade1ce, 0xf1ef1231, 0x32732252, 0x52b54294, 0x72f762d6, 0x93398318,
-    0xa35ad3bd, 0xc39cf3ff, 0xe3de2462, 0x34430420, 0x64e674c7, 0x44a45485,
-    0xa56ab54b, 0x85289509, 0xf5cfc5ac, 0xd58d3653, 0x26721611, 0x063076d7,
-    0x569546b4, 0xb75ba77a, 0x97198738, 0xf7dfe7fe, 0xc7bc48c4, 0x58e56886,
-    0x78a70840, 0x18612802, 0xc9ccd9ed, 0xe98ef9af, 0x89489969, 0xa90ab92b,
-    0x4ad47ab7, 0x6a961a71, 0x0a503a33, 0x2a12dbfd, 0xfbbfeb9e, 0x9b798b58,
-    0xbb3bab1a, 0x6ca67c87, 0x5cc52c22, 0x3c030c60, 0x1c41edae, 0xfd8fcdec,
-    0xad2abd0b, 0x8d689d49, 0x7e976eb6, 0x5ed54ef4, 0x2e321e51, 0x0e70ff9f,
-    0xefbedfdd, 0xcffcbf1b, 0x9f598f78, 0x918881a9, 0xb1caa1eb, 0xd10cc12d,
-    0xe16f1080, 0x00a130c2, 0x20e35004, 0x40257046, 0x83b99398, 0xa3fbb3da,
-    0xc33dd31c, 0xe37ff35e, 0x129022f3, 0x32d24235, 0x52146277, 0x7256b5ea,
-    0x95a88589, 0xf56ee54f, 0xd52cc50d, 0x34e224c3, 0x04817466, 0x64475424,
-    0x4405a7db, 0xb7fa8799, 0xe75ff77e, 0xc71dd73c, 0x26d336f2, 0x069116b0,
-    0x76764615, 0x5634d94c, 0xc96df90e, 0xe92f99c8, 0xb98aa9ab, 0x58444865,
-    0x78066827, 0x18c008e1, 0x28a3cb7d, 0xdb5ceb3f, 0xfb1e8bf9, 0x9bd8abbb,
-    0x4a755a54, 0x6a377a16, 0x0af11ad0, 0x2ab33a92, 0xed0fdd6c, 0xcd4dbdaa,
-    0xad8b9de8, 0x8dc97c26, 0x5c644c45, 0x3ca22c83, 0x1ce00cc1, 0xef1fff3e,
-    0xdf7caf9b, 0xbfba8fd9, 0x9ff86e17, 0x7e364e55, 0x2e933eb2, 0x0ed11ef0
-    };
-
-    CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
-    DWT->CYCCNT = 0;
-    DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
-
-    uint32_t start = 0;
-
-    start = DWT->CYCCNT;
-    uint32_t crc_hw_val = crc32_hw(0xFFFFFFFF, (uint8_t *)aDataBuffer, BUFFER_SIZE);
-    uint32_t crc32_hw_duration = DWT->CYCCNT - start;
-
-    start = DWT->CYCCNT;
-    uint32_t crc_sw_val = crc32iso_hdlc_bit(0xFFFFFFFF, (uint8_t *)aDataBuffer, BUFFER_SIZE);
-    uint32_t crc32iso_hdlc_bit_duration = DWT->CYCCNT - start;
-
-    // const uint32_t Polynomial = 0xEDB88320;
-    // for (unsigned int i = 0; i <= 0xFF; i++) {
-    //     uint32_t crc = i;
-    //     for (unsigned int j = 0; j < 8; j++) { crc = (crc >> 1) ^ (-int(crc & 1) & Polynomial); }
-    //     crc32lookup[i] = crc;
-    // }
-
-    start = DWT->CYCCNT;
-    uint32_t crc_sw_lut1_val = crc32_1byte(0xFFFFFFFF, (uint8_t *)aDataBuffer, BUFFER_SIZE);
-    uint32_t crc_sw_lut1_val_duration = DWT->CYCCNT - start;
-}
-
 
 bool attempt_install_from_Sd(std::span<const FlashSector> flashSectors) {
 
@@ -551,10 +403,6 @@ bool attempt_install_from_Sd(std::span<const FlashSector> flashSectors) {
     MX_SPI4_Init();
     MX_FATFS_Init();
 
-    __HAL_RCC_CRC_CLK_ENABLE();
-
-    crc_test();
-
     FATFS FatFs;
     FRESULT fres;
 
@@ -575,6 +423,7 @@ bool attempt_install_from_Sd(std::span<const FlashSector> flashSectors) {
         return false;
     }
 
+    log_message("====================", false);
     log_message("Firmware update file found. Checking...");
 
     // Read header metadata from file
@@ -606,13 +455,6 @@ bool attempt_install_from_Sd(std::span<const FlashSector> flashSectors) {
 
     // FW has passed all checks. Write FW to flash.
 
-    // FIL file_log;
-    // //FRESULT fres;
-    // std::string log_filename = "sd_fw_log.txt";
-    // fres = f_open(&file_log, log_filename.c_str(), FA_CREATE_ALWAYS | FA_WRITE);
-    // f_printf(&file_log, "%ul - starting SD firmware update...\n", HAL_GetTick());
-
-
     // Create backup file of currently flashed firmware.
     log_message("Firmware update passes checks! Firmware will be updated.");
     log_message("Creating backup of current firmware...");
@@ -628,17 +470,25 @@ bool attempt_install_from_Sd(std::span<const FlashSector> flashSectors) {
     log_message("Writing updated firmware...");
     bool new_fw_success = write_file_to_flash_retry(new_fw_filename, new_fw_offset, flashSectors, 5, header.crc32);
 
-    // If successful, create a marker file so that FW update doesn't re-run
     if (new_fw_success) {
+        // If successful, create a marker file so that FW update doesn't re-run
         log_message("Firmware update: PASS");
-        create_marker_file(update_done_marker_filename);
+
+        // If a previous fw.done file exists, remove it
+        if (f_stat(update_done_marker_filename, nullptr) == FR_OK) {
+            f_unlink(update_done_marker_filename);
+        }
+        // Rename the used firmware file to fw.done
+        if (f_rename(new_fw_filename, update_done_marker_filename) == FR_OK) {
+            log_message("Firmware file rename: PASS");
+        } else {
+            log_message("Firmware file rename: FAIL");
+        }
+
     } else {
+        // Something went wrong
         log_message("Firmware update: FAIL");
         log_message("Firmware update has not succeeded!");
-    }
-
-    // Something went wrong
-    if (!new_fw_success) {
 
         // Attempt to recover by flashing backup of original firmware with X retries
         log_message("Restoring backup firmware...");
@@ -658,12 +508,6 @@ bool attempt_install_from_Sd(std::span<const FlashSector> flashSectors) {
             Write_Flash_Sector(file_buffer, flashSectors, 0);
         }
     }
-
-        /* Enable CRC reset state */
-    __HAL_RCC_CRC_FORCE_RESET();
-
-    /* Release CRC from reset state */
-    __HAL_RCC_CRC_RELEASE_RESET();
 
     return new_fw_success;
 }
