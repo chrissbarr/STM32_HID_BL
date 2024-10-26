@@ -71,7 +71,7 @@ int main(void) {
     // check boot pin immediately after boot for reference later
     bool bootPinSet = Boot_Pin_Set();
 
-    Blink_LED(2, 250);
+    Blink_LED(1, 250);
 
     #ifdef SD_ENABLED
     if (attempt_install_from_Sd(FlashSectors)) {
@@ -89,7 +89,7 @@ int main(void) {
 
     if (!startBootloader && bootloaderPreBootWait == 0) { Start_User_Application(); }
 
-    Blink_LED(5, 50);
+    Blink_LED(1, 250);
 
     USB_Init();
 
@@ -150,7 +150,7 @@ int main(void) {
         }
 
         if (!startBootloader && !anyCommandsReceived && HAL_GetTick() > bootloaderPreBootWait) {
-            Blink_LED(1, 500);
+            Blink_LED(1, 250);
             Start_User_Application();
         }
     }

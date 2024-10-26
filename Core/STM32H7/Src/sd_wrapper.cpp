@@ -12,6 +12,8 @@
 
 SPI_HandleTypeDef hspi;
 
+extern void Set_LED(bool on);
+
 void MX_SPI4_Init(void)
 {
   hspi.Instance = SPI4;
@@ -296,7 +298,9 @@ uint32_t write_file_to_flash(const std::string& filename, uint32_t fw_start_offs
         }
 
         // Write buffer to next location in flash
+        Set_LED(true);
         Write_Flash_Sector(file_buffer, flashSectors, currentFlashPage);
+        Set_LED(false);
         currentFlashPage += 1;
         bytes_written += bytes_read;
 
