@@ -393,7 +393,6 @@ bool attempt_install_from_Sd(std::span<const FlashSector> flashSectors) {
     FRESULT fres;
 
     // Open the file system
-    HAL_Delay(1000);
     fres = f_mount(&FatFs, "", 1 /* 1 = mount now */);
     if (fres != FR_OK) {
         return false;
