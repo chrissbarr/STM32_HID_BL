@@ -68,9 +68,10 @@ int main(void) {
     SystemClock_Config();
     GPIO_Init();
 
-    Blink_LED(1, 500);
+    // check boot pin immediately after boot for reference later
+    bool bootPinSet = Boot_Pin_Set();
 
-
+    Blink_LED(2, 250);
 
     #ifdef SD_ENABLED
     if (attempt_install_from_Sd(FlashSectors)) {
@@ -84,16 +85,11 @@ int main(void) {
         startBootloader = true;
     }
 
-    if (Boot_Pin_Set()) { startBootloader = true; }
+    if (bootPinSet) { startBootloader = true; }
 
     if (!startBootloader && bootloaderPreBootWait == 0) { Start_User_Application(); }
 
-    for (int i = 0; i < 5; i++) {
-        Set_LED(true);
-        HAL_Delay(50);
-        Set_LED(false);
-        HAL_Delay(50);
-    }
+    Blink_LED(5, 50);
 
     USB_Init();
 
@@ -122,9 +118,7 @@ int main(void) {
                     break;
                 }
                 case HIDCommand::LEDFlash: {
-                    Set_LED(true);
-                    HAL_Delay(500);
-                    Set_LED(false);
+                    Blink_LED(1, 500);
                     break;
                 }
                 default: {
@@ -156,10 +150,7 @@ int main(void) {
         }
 
         if (!startBootloader && !anyCommandsReceived && HAL_GetTick() > bootloaderPreBootWait) {
-            Set_LED(true);
-            HAL_Delay(50);
-            Set_LED(false);
-            HAL_Delay(50);
+            Blink_LED(1, 500);
             Start_User_Application();
         }
     }
