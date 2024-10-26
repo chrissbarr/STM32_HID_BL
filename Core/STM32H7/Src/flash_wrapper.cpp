@@ -37,6 +37,7 @@ void Write_Flash_Sector(std::span<uint8_t> flashPageData, std::span<const FlashS
         EraseInit.VoltageRange = FLASH_VOLTAGE_RANGE_3;
         EraseInit.Sector = eraseSector;
         EraseInit.NbSectors = 1;
+        EraseInit.Banks = FLASH_BANK_1;
         uint32_t SectorError;
         HAL_FLASHEx_Erase(&EraseInit, &SectorError);
     }
