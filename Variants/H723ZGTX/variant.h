@@ -13,20 +13,14 @@ extern "C" void SystemClock_Config(void);
 
 #define BOOT1_PIN GPIO_PIN_2
 #define BOOT1_PORT GPIOB
-#define BOOT1_ACTIVEHIGH false
+#define BOOT1_ACTIVEHIGH true
 
-#define LED_PIN GPIO_PIN_7
-#define LED_PORT GPIOG
-#define LED_ACTIVEHIGH false
+#define LED_PIN GPIO_PIN_5
+#define LED_PORT GPIOF
+#define LED_ACTIVEHIGH true
 
 #define SD_ENABLED
-
-// CS = DAT3 = PC11
-// DI = CMD = PD2
-// SCLK = CLK = PC12
-// DO = DATA0 = PC8
-// #define SD_CS_Pin GPIO_PIN_4
-// #define SD_CS_GPIO_Port GPIOE
+#define SD_BIN_FILENAME "volumic.bin"
 
 constexpr std::array<FlashSector, 8> FlashSectors{{
     {0x08000000, 0x20000},

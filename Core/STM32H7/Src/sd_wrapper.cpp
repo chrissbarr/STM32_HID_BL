@@ -2,6 +2,7 @@
 #include "flash_wrapper.h"
 #include "main.h"
 #include "fatfs.h"
+#include "variant.h"
 
 #include <array>
 #include <cstdint>
@@ -100,10 +101,10 @@ uint32_t uint32_from_uint8(uint8_t* buffer)
     return val;
 }
 
-uint32_t crc32_from_sd_file(const char* filename, uint32_t fw_start_offset) {
+uint32_t crc32_from_sd_file(const std::string& filename, uint32_t fw_start_offset) {
     FIL file;
     FRESULT fres;
-    fres = f_open(&file, filename, FA_READ);
+    fres = f_open(&file, filename.c_str(), FA_READ);
     if (fres != FR_OK) {
         return 0;
     }
@@ -155,7 +156,7 @@ struct Sd_fw_header {
     std::array<uint8_t, 4> signature;
 };
 
-Sd_fw_header read_sd_file_header(const char* filename) {
+Sd_fw_header read_sd_file_header(const std::string& filename) {
 
     FIL file;
     FRESULT fres;
@@ -163,7 +164,7 @@ Sd_fw_header read_sd_file_header(const char* filename) {
     UINT bytes_read;
 
     // Open file
-    fres = f_open(&file, filename, FA_READ);
+    fres = f_open(&file, filename.c_str(), FA_READ);
     if (fres != FR_OK) {
         return header;
     }
@@ -186,7 +187,7 @@ Sd_fw_header read_sd_file_header(const char* filename) {
 
     // Calculate FW actual size
     FILINFO fno;
-    fres = f_stat(filename, &fno);
+    fres = f_stat(filename.c_str(), &fno);
     if (fres == FR_OK) {
         header.size = fno.fsize - 8;
     }
@@ -217,11 +218,11 @@ uint32_t calculate_available_flash_space_bytes(std::span<const FlashSector> flas
     return flash_available_bytes;
 }
 
-bool write_flash_to_file(const char* filename, std::span<const FlashSector> flashSectors) {
+bool write_flash_to_file(const std::string& filename, std::span<const FlashSector> flashSectors) {
     FIL file;
     FRESULT fres;
     bool success = true;
-    fres = f_open(&file, filename, FA_CREATE_ALWAYS | FA_WRITE);
+    fres = f_open(&file, filename.c_str(), FA_CREATE_ALWAYS | FA_WRITE);
     if (fres != FR_OK) {
         return false;
     }
@@ -239,7 +240,7 @@ bool write_flash_to_file(const char* filename, std::span<const FlashSector> flas
     return success;
 }
 
-bool write_flash_to_file_retry(const char* filename, std::span<const FlashSector> flashSectors, int max_attempts) {
+bool write_flash_to_file_retry(const std::string& filename, std::span<const FlashSector> flashSectors, int max_attempts) {
 
     bool success = false;
     int attempts = 0;
@@ -263,13 +264,13 @@ bool write_flash_to_file_retry(const char* filename, std::span<const FlashSector
 
 }
 
-uint32_t write_file_to_flash(const char* filename, uint32_t fw_start_offset, std::span<const FlashSector> flashSectors) {
+uint32_t write_file_to_flash(const std::string& filename, uint32_t fw_start_offset, std::span<const FlashSector> flashSectors) {
 
     FIL file;
     FRESULT fres;
 
     // Open file
-    fres = f_open(&file, filename, FA_READ);
+    fres = f_open(&file, filename.c_str(), FA_READ);
     if (fres != FR_OK) {
         return 0;
     }
@@ -307,7 +308,7 @@ uint32_t write_file_to_flash(const char* filename, uint32_t fw_start_offset, std
     return bytes_written;
 }
 
-bool write_file_to_flash_retry(const char* filename, uint32_t fw_start_offset, std::span<const FlashSector> flashSectors, int max_attempts, uint32_t good_crc) {
+bool write_file_to_flash_retry(const std::string& filename, uint32_t fw_start_offset, std::span<const FlashSector> flashSectors, int max_attempts, uint32_t good_crc) {
 
     bool success = false;
     int attempts = 0;
@@ -329,21 +330,6 @@ bool write_file_to_flash_retry(const char* filename, uint32_t fw_start_offset, s
         }
      }
 
-    return success;
-}
-
-bool create_marker_file(const char* filename) {
-    FIL file;
-    FRESULT fres;
-    bool success = true;
-    fres = f_open(&file, filename, FA_CREATE_ALWAYS | FA_WRITE);
-    if (fres != FR_OK) {
-        return false;
-    }
-    fres = f_close(&file);
-    if (fres != FR_OK) {
-        success = false;
-    }
     return success;
 }
 
@@ -393,9 +379,9 @@ bool attempt_install_from_Sd(std::span<const FlashSector> flashSectors) {
     //       Proceed to run bootloader waiting for USB connection.
 
 
-    const char new_fw_filename[] = "sd_fw.bin"; // sd_fw_nosig
-    const char backup_fw_filename[] = "sd_fw.bak.bin";
-    const char update_done_marker_filename[] = "sd_fw.done";
+    const std::string new_fw_filename = SD_BIN_FILENAME;
+    const std::string backup_fw_filename = new_fw_filename + ".bak";
+    const std::string update_done_marker_filename = new_fw_filename + ".done";
     constexpr uint32_t new_fw_offset = 8;
     constexpr std::array<uint8_t, 4> sig_expected = {0xAA, 0x3D, 0x00, 0x01};
 
@@ -413,13 +399,8 @@ bool attempt_install_from_Sd(std::span<const FlashSector> flashSectors) {
         return false;
     }
 
-    // Check if a DONE marker file exists and exit if so
-    // if (f_stat(update_done_marker_filename, nullptr) != FR_NO_FILE) {
-    //     return false;
-    // }
-
     // Check if a FW update file exists
-    if (f_stat(new_fw_filename, nullptr) == FR_NO_FILE) {
+    if (f_stat(new_fw_filename.c_str(), nullptr) == FR_NO_FILE) {
         return false;
     }
 
@@ -475,11 +456,11 @@ bool attempt_install_from_Sd(std::span<const FlashSector> flashSectors) {
         log_message("Firmware update: PASS");
 
         // If a previous fw.done file exists, remove it
-        if (f_stat(update_done_marker_filename, nullptr) == FR_OK) {
-            f_unlink(update_done_marker_filename);
+        if (f_stat(update_done_marker_filename.c_str(), nullptr) == FR_OK) {
+            f_unlink(update_done_marker_filename.c_str());
         }
         // Rename the used firmware file to fw.done
-        if (f_rename(new_fw_filename, update_done_marker_filename) == FR_OK) {
+        if (f_rename(new_fw_filename.c_str(), update_done_marker_filename.c_str()) == FR_OK) {
             log_message("Firmware file rename: PASS");
         } else {
             log_message("Firmware file rename: FAIL");
